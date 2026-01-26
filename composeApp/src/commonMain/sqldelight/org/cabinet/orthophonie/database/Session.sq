@@ -1,0 +1,9 @@
+CREATE TABLE seances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id INTEGER,
+    date_heure_debut TEXT NOT NULL,
+    duree_minutes INTEGER DEFAULT 45,
+    statut_presence TEXT CHECK(statut_presence IN ('PRESENT', 'ABSENT_EXCUSE', 'ABSENT_NON_EXCUSE')),
+    est_recurrente TEXT,
+    FOREIGN KEY (patient_id) REFERENCES patientRecord(id) ON DELETE CASCADE
+);
