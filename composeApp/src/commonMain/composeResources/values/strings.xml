@@ -6,6 +6,7 @@
     <string name="practice_overview">Here's your practice overview</string>
     <string name="total_patients">Total Patients</string>
     <string name="today_appointments">Today's Appointments</string>
+    <string name="total_appointments">Total Appointments</string>
     <string name="pending_payments">Pending Payments</string>
     <string name="monthly_revenue">Monthly Revenue</string>
     <string name="see_all">See All</string>
@@ -13,4 +14,9 @@
     <string name="quick_actions">Quick Actions</string>
     <string name="new_appointment">New Appointment</string>
     <string name="new_patient">New Patient</string>
+
+    <!-- Patients Screen -->
+    <string name="add_new_patient">Add new patient</string>
+    <string name="search_a_patient">Search a patient...</string>
+    <string name="no_contact">No contact</string>
 </resources>

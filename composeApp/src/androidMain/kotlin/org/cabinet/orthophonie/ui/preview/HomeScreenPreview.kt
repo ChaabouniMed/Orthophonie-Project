@@ -11,6 +11,10 @@ import org.cabinet.orthophonie.ui.theme.AppTheme
 @Composable
 fun HomeScreenPreview() {
     AppTheme {
-        HomeScreen()
+        HomeScreen(
+            navigateToPatients = {},
+            navigateToAppointments = {},
+            onNewPatient = {}
+        )
     }
 }

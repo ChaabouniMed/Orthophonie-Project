@@ -1,6 +1,5 @@
 package org.cabinet.orthophonie.ui
 
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade

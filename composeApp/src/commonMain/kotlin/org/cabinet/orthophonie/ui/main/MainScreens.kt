@@ -2,10 +2,10 @@ package org.cabinet.orthophonie.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -16,21 +16,58 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import org.cabinet.orthophonie.ui.main.home.HomeScreen
+import org.cabinet.orthophonie.ui.main.patients.PatientsScreen
+import org.cabinet.orthophonie.ui.main.patients.new_patient.NewPatientScreen
+import org.koin.compose.koinInject
+import org.koin.core.parameter.parametersOf
 
 @Composable
 fun MainScreens(
     component: MainComponent,
 ) {
+    var selectedScreen by rememberSaveable { mutableStateOf(BottomNavigationItem.HOME) }
+
+    val onHomeTabClicked = {
+        selectedScreen = BottomNavigationItem.HOME
+        component.onHomeTabClicked()
+    }
+    val onCalendarTabClicked = {
+        selectedScreen = BottomNavigationItem.CALENDAR
+        component.onCalendarTabClicked()
+    }
+    val onPatientsTabClicked = {
+        selectedScreen = BottomNavigationItem.PATIENTS
+        component.onPatientsTabClicked()
+    }
+    val onReportTabClicked = {
+        selectedScreen = BottomNavigationItem.REPORTS
+        component.onReportTabClicked()
+    }
+
     Scaffold(
-        bottomBar = { BottomNavigationBar() }
+        bottomBar = {
+            BottomNavigationBar(
+                selectedScreen = selectedScreen,
+                onHomeTabClicked = onHomeTabClicked,
+                onCalendarTabClicked = onCalendarTabClicked,
+                onPatientsTabClicked = onPatientsTabClicked,
+                onReportTabClicked = onReportTabClicked
+            )
+        }
     ) { padding ->
         MainScreensContent(
             component = component,
+            onTotalPatientsClicked = onPatientsTabClicked,
+            onCalendarTabClicked = onCalendarTabClicked,
             padding = padding,
         )
     }
@@ -39,28 +76,36 @@ fun MainScreens(
 @Composable
 fun MainScreensContent(
     component: MainComponent,
+    onTotalPatientsClicked: () -> Unit,
+    onCalendarTabClicked: () -> Unit,
     padding: PaddingValues,
 ) {
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
-            .padding(padding)
-            .padding(16.dp),
+            .padding(padding),
+//            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        item {
-            Children(stack = component.childStack) {
-                when (val child = it.instance) {
-                    is MainComponent.Child.HomeChild -> HomeScreen()
-                    is MainComponent.Child.CalendarChild -> CalendarScreenContent()
-                    is MainComponent.Child.ReportChild -> ReportScreenContent()
-                    is MainComponent.Child.PatientsChild -> PatientsScreenContent()
-                }
+        Children(stack = component.childStack) {
+            when (val child = it.instance) {
+                is MainComponent.Child.HomeChild -> HomeScreen(
+                    navigateToPatients = onTotalPatientsClicked,
+                    navigateToAppointments = onCalendarTabClicked,
+                    onNewPatient = { component.onNewPatientClicked(null) }
+                )
+                is MainComponent.Child.CalendarChild -> CalendarScreenContent()
+                is MainComponent.Child.ReportChild -> ReportScreenContent()
+                is MainComponent.Child.PatientsChild -> PatientsScreen(
+                    viewModel = koinInject { parametersOf(child.component.onAddPatient, child.component.onPatientSelected) }
+                )
+                is MainComponent.Child.NewPatientChild -> NewPatientScreen(
+                    viewModel =  koinInject { parametersOf(child.component.selectedPatientId, child.component.onBack) }
+                )
             }
         }
     }
-
 }
 
 @Composable
@@ -74,35 +119,40 @@ fun ReportScreenContent() {
 }
 
 @Composable
-fun PatientsScreenContent() {
-
-}
-
-@Composable
-fun BottomNavigationBar() {
+fun BottomNavigationBar(
+    selectedScreen: BottomNavigationItem,
+    onHomeTabClicked: () -> Unit,
+    onCalendarTabClicked: () -> Unit,
+    onPatientsTabClicked: () -> Unit,
+    onReportTabClicked: () -> Unit
+) {
     NavigationBar(
         containerColor = Color.White,
         tonalElevation = 8.dp
     ) {
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            selected = true,
-            onClick = { }
+            selected = selectedScreen == BottomNavigationItem.HOME,
+            onClick = { onHomeTabClicked() }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
-            selected = false,
-            onClick = { }
+            selected = selectedScreen == BottomNavigationItem.CALENDAR,
+            onClick = { onCalendarTabClicked() }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.Groups, contentDescription = null) },
-            selected = false,
-            onClick = { }
+            selected = selectedScreen == BottomNavigationItem.PATIENTS,
+            onClick = { onPatientsTabClicked() }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
-            selected = false,
-            onClick = { }
+            selected = selectedScreen == BottomNavigationItem.REPORTS,
+            onClick = { onReportTabClicked() }
         )
     }
+}
+
+enum class BottomNavigationItem {
+    HOME, CALENDAR, PATIENTS, REPORTS
 }

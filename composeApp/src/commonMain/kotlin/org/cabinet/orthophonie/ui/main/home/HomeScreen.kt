@@ -1,6 +1,7 @@
 package org.cabinet.orthophonie.ui.main.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -44,22 +46,36 @@ import orthophonie.composeapp.generated.resources.*
 
 @Composable
 fun HomeScreen(
-
+    navigateToPatients: () -> Unit,
+    navigateToAppointments: () -> Unit,
+    onNewPatient: () -> Unit
 ) {
-    HomeScreenContent()
+    HomeScreenContent(
+        navigateToPatients = navigateToPatients,
+        navigateToAppointments = navigateToAppointments,
+        onNewPatient = onNewPatient
+    )
 }
 
 @Composable
 fun HomeScreenContent(
-
+    navigateToPatients: () -> Unit = {},
+    navigateToAppointments: () -> Unit = {},
+    onNewPatient: () -> Unit = {}
 ) {
-    Column(
+    LazyColumn(
+        modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        HeaderSection()
-        SummaryGrid()
-        AppointmentsSection()
-        QuickActionsSection()
+        item { HeaderSection() }
+        item {
+            SummaryGrid(
+                navigateToPatients,
+                navigateToAppointments
+            )
+        }
+        item { AppointmentsSection() }
+        item { QuickActionsSection(onNewPatient) }
     }
 }
 
@@ -72,13 +88,13 @@ fun HeaderSection() {
     ) {
         Column {
             Text(
-                text = "Good Morning",
+                text = stringResource(string.good_morning),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1A1C1E)
             )
             Text(
-                text = "Here's your practice overview",
+                text = stringResource(string.practice_overview),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
@@ -95,7 +111,10 @@ fun HeaderSection() {
 }
 
 @Composable
-fun SummaryGrid() {
+fun SummaryGrid(
+    navigateToPatients: () -> Unit,
+    navigateToAppointments: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             SummaryCard(
@@ -104,14 +123,18 @@ fun SummaryGrid() {
                 iconBgColor = Color(0xFFE3F2FD),
                 iconColor = Color(0xFF2196F3),
                 modifier = Modifier.weight(1f)
-            )
+            ) {
+                navigateToPatients()
+            }
             SummaryCard(
-                title = stringResource(string.today_appointments),
+                title = stringResource(string.total_appointments),
                 icon = Icons.Default.EventAvailable,
                 iconBgColor = Color(0xFFE0F2F1),
                 iconColor = Color(0xFF009688),
                 modifier = Modifier.weight(1f)
-            )
+            ) {
+                navigateToAppointments()
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             SummaryCard(
@@ -138,10 +161,13 @@ fun SummaryCard(
     icon: ImageVector,
     iconBgColor: Color,
     iconColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = modifier.height(120.dp),
+        modifier = modifier.height(120.dp).clickable(
+            onClick = onClick
+        ),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
@@ -256,7 +282,7 @@ fun AppointmentItem() {
 }
 
 @Composable
-fun QuickActionsSection() {
+fun QuickActionsSection(onNewPatient: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = stringResource(string.quick_actions),
@@ -266,32 +292,44 @@ fun QuickActionsSection() {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             QuickActionButton(
                 label = stringResource(string.new_patient),
-                icon = Icons.Default.Add,
-                modifier = Modifier.weight(1f)
+                icon = Icons.Default.PersonAdd,
+                modifier = Modifier.weight(1f),
+                onClick = onNewPatient
             )
             QuickActionButton(
-                label = stringResource(string.new_patient),
-                icon = Icons.Default.PersonAdd,
-                modifier = Modifier.weight(1f)
+                label = stringResource(string.new_appointment),
+                icon = Icons.Default.Add,
+                modifier = Modifier.weight(1f),
+                onClick = {}
             )
         }
     }
 }
 
 @Composable
-fun QuickActionButton(label: String, icon: ImageVector, modifier: Modifier = Modifier) {
+fun QuickActionButton(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth().height(80.dp),
+            modifier = Modifier.fillMaxWidth().height(80.dp).clickable(onClick = onClick),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Color(0xFF2196F3), modifier = Modifier.size(32.dp))
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

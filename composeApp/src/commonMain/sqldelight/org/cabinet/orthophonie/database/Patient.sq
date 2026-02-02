@@ -3,15 +3,66 @@ CREATE TABLE patientRecord (
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     date_birth TEXT,
-    contact_parent TEXT,
+    contact_parent TEXT NOT NULL,
     school TEXT,
-    class TEXT,
-    creation_date TEXT
+    school_class TEXT,
+    status TEXT NOT NULL,
+    creation_date TEXT NOT NULL
 );
 
 insertPatient:
-INSERT INTO patientRecord(id, first_name, last_name, date_birth, contact_parent, school, class, creation_date)
-VALUES ?;
+INSERT INTO patientRecord(
+    first_name,
+    last_name,
+    date_birth,
+    contact_parent,
+    school,
+    school_class,
+    status,
+    creation_date
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+updatePatient:
+UPDATE patientRecord
+SET
+    first_name = ?,
+    last_name = ?,
+    date_birth = ?,
+    contact_parent = ?,
+    school = ?,
+    school_class = ?,
+    status = ?
+WHERE id = ?;
+
+deletePatientById:
+DELETE FROM patientRecord
+WHERE id = ?;
 
 getPatients:
-SELECT * FROM patientRecord;
+SELECT *
+FROM patientRecord
+ORDER BY first_name ASC, last_name ASC;
+
+getPatientById:
+SELECT *
+FROM patientRecord
+WHERE id = ?;
+
+getActivePatients:
+SELECT *
+FROM patientRecord
+WHERE status = 'ACTIVE'
+ORDER BY first_name ASC, last_name ASC;
+
+getPatientsBySchool:
+SELECT *
+FROM patientRecord
+WHERE school = ?
+ORDER BY last_name;
+
+getRecentPatients:
+SELECT *
+FROM patientRecord
+ORDER BY creation_date DESC
+LIMIT ?;
