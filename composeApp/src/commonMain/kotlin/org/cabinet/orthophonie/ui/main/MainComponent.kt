@@ -6,15 +6,15 @@ import com.arkivanov.decompose.router.stack.StackNavigation
 import com.arkivanov.decompose.router.stack.bringToFront
 import com.arkivanov.decompose.router.stack.childStack
 import com.arkivanov.decompose.router.stack.pop
-import com.arkivanov.decompose.router.stack.pushNew
+import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.value.Value
 import kotlinx.serialization.Serializable
-import org.cabinet.orthophonie.database.PatientRecord
-import org.cabinet.orthophonie.ui.main.calendar.CalendarComponent
+import org.cabinet.orthophonie.ui.main.sessions.SessionsComponent
 import org.cabinet.orthophonie.ui.main.home.HomeComponent
 import org.cabinet.orthophonie.ui.main.patients.PatientsComponent
 import org.cabinet.orthophonie.ui.main.patients.new_patient.NewPatientComponent
 import org.cabinet.orthophonie.ui.main.report.ReportComponent
+import org.cabinet.orthophonie.ui.main.sessions.new_session.NewSessionComponent
 
 class MainComponent(
     componentContext: ComponentContext,
@@ -35,7 +35,10 @@ class MainComponent(
     private fun createChild(config: Config, componentContext: ComponentContext): Child =
         when (config) {
             is Config.Home -> Child.HomeChild(HomeComponent(componentContext))
-            is Config.Calendar -> Child.CalendarChild(CalendarComponent(componentContext))
+            is Config.Sessions -> Child.SessionsChild(SessionsComponent(
+                componentContext,
+                onAddSession = { onNewSessionClicked(null) },
+                onSessionSelected = { onNewSessionClicked(it) }))
             is Config.Report -> Child.ReportChild(ReportComponent(componentContext))
             is Config.Patients -> Child.PatientsChild(
                 PatientsComponent(
@@ -50,14 +53,21 @@ class MainComponent(
                     onBack = { navigation.pop() }
                 )
             )
+            is Config.NewSession -> Child.NewSessionChild(
+                NewSessionComponent(
+                    componentContext = componentContext,
+                    selectedSessionId = config.selectedSessionId,
+                    onBack = { navigation.pop() }
+                )
+            )
         }
 
     fun onHomeTabClicked() {
         navigation.bringToFront(Config.Home)
     }
 
-    fun onCalendarTabClicked() {
-        navigation.bringToFront(Config.Calendar)
+    fun onSessionsTabClicked() {
+        navigation.bringToFront(Config.Sessions)
     }
 
     fun onPatientsTabClicked() {
@@ -72,12 +82,17 @@ class MainComponent(
         navigation.bringToFront(Config.NewPatient(selectedPatientId))
     }
 
+    fun onNewSessionClicked(selectedSessionId: Long?) {
+        navigation.bringToFront(Config.NewSession(selectedSessionId))
+    }
+
     sealed class Child {
         class HomeChild(val component: HomeComponent) : Child()
-        class CalendarChild(val component: CalendarComponent) : Child()
+        class SessionsChild(val component: SessionsComponent) : Child()
         class PatientsChild(val component: PatientsComponent) : Child()
         class ReportChild(val component: ReportComponent) : Child()
         class NewPatientChild(val component: NewPatientComponent) : Child()
+        class NewSessionChild(val component: NewSessionComponent) : Child()
     }
 
     @Serializable
@@ -86,7 +101,7 @@ class MainComponent(
         data object Home : Config()
 
         @Serializable
-        data object Calendar : Config()
+        data object Sessions : Config()
 
         @Serializable
         data object Patients : Config()
@@ -96,5 +111,8 @@ class MainComponent(
 
         @Serializable
         data class NewPatient(val selectedPatientId: Long?) : Config()
+
+        @Serializable
+        data class NewSession(val selectedSessionId: Long?) : Config()
     }
 }

@@ -1,7 +1,6 @@
 package org.cabinet.orthophonie.ui.main.patients
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,29 +106,34 @@ fun PatientsScreenContent(
                 singleLine = true
             )
 
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF2196F3))
+                }
+            } else if (uiState.filteredPatients.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Aucun patient", color = Color.Gray)
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (uiState.isLoading) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
+                uiState.filteredPatients.forEach { patient ->
+                    item(key = patient.id) {
+                        PatientListItem(
+                            name = "${patient.first_name} ${patient.last_name}",
+                            phone = patient.contact_parent
                         ) {
-                            CircularProgressIndicator(color = Color(0xFF2196F3))
-                        }
-                    }
-                } else {
-                    uiState.filteredPatients.forEach { patient ->
-                        item(key = patient.id) {
-                            PatientListItem(
-                                name = "${patient.first_name} ${patient.last_name}",
-                                phone = patient.contact_parent
-                            ) {
-                                onEvent(PatientsScreenEvents.OnPatientSelected(patient.id))
-                            }
+                            onEvent(PatientsScreenEvents.OnPatientSelected(patient.id))
                         }
                     }
                 }
@@ -145,10 +149,11 @@ fun PatientListItem(
     onItemClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onItemClick() },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onItemClick
     ) {
         Row(
             modifier = Modifier

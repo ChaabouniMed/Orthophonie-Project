@@ -13,7 +13,9 @@ import org.cabinet.orthophonie.ui.theme.AppTheme
 fun NewPatientScreenPreview() {
     AppTheme {
         NewPatientScreenContent(
-            uiState = NewPatientState(),
+            uiState = NewPatientState(
+                isLoading = true
+            ),
             onEvent = {}
         )
     }

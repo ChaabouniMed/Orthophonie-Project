@@ -6,7 +6,7 @@ CREATE TABLE patientRecord (
     contact_parent TEXT NOT NULL,
     school TEXT,
     school_class TEXT,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ARCHIVED')), -- Active, Archived
     creation_date TEXT NOT NULL
 );
 

@@ -5,6 +5,6 @@ import com.arkivanov.decompose.ComponentContext
 class PatientsComponent(
     componentContext: ComponentContext,
     val onAddPatient: () -> Unit,
-    val onPatientSelected: (Long) -> Unit,
+    val onPatientSelected: (patientId: Long) -> Unit,
     ) :
     ComponentContext by componentContext

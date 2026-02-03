@@ -3,6 +3,7 @@ package org.cabinet.orthophonie.ui.preview
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import org.cabinet.orthophonie.ui.main.home.HomeScreen
+import org.cabinet.orthophonie.ui.main.home.HomeScreenContent
 import org.cabinet.orthophonie.ui.theme.AppTheme
 
 @Preview(
@@ -11,9 +12,10 @@ import org.cabinet.orthophonie.ui.theme.AppTheme
 @Composable
 fun HomeScreenPreview() {
     AppTheme {
-        HomeScreen(
+        HomeScreenContent(
+            todaySessions = listOf(),
             navigateToPatients = {},
-            navigateToAppointments = {},
+            navigateToSessions = {},
             onNewPatient = {}
         )
     }

@@ -27,8 +27,11 @@ import com.arkivanov.decompose.extensions.compose.stack.Children
 import org.cabinet.orthophonie.ui.main.home.HomeScreen
 import org.cabinet.orthophonie.ui.main.patients.PatientsScreen
 import org.cabinet.orthophonie.ui.main.patients.new_patient.NewPatientScreen
+import org.cabinet.orthophonie.ui.main.sessions.SessionsScreen
+import org.cabinet.orthophonie.ui.main.sessions.new_session.NewSessionScreen
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
+import kotlin.time.Clock
 
 @Composable
 fun MainScreens(
@@ -40,9 +43,9 @@ fun MainScreens(
         selectedScreen = BottomNavigationItem.HOME
         component.onHomeTabClicked()
     }
-    val onCalendarTabClicked = {
-        selectedScreen = BottomNavigationItem.CALENDAR
-        component.onCalendarTabClicked()
+    val onSessionsTabClicked = {
+        selectedScreen = BottomNavigationItem.Sessions
+        component.onSessionsTabClicked()
     }
     val onPatientsTabClicked = {
         selectedScreen = BottomNavigationItem.PATIENTS
@@ -58,7 +61,7 @@ fun MainScreens(
             BottomNavigationBar(
                 selectedScreen = selectedScreen,
                 onHomeTabClicked = onHomeTabClicked,
-                onCalendarTabClicked = onCalendarTabClicked,
+                onSessionsTabClicked = onSessionsTabClicked,
                 onPatientsTabClicked = onPatientsTabClicked,
                 onReportTabClicked = onReportTabClicked
             )
@@ -67,7 +70,7 @@ fun MainScreens(
         MainScreensContent(
             component = component,
             onTotalPatientsClicked = onPatientsTabClicked,
-            onCalendarTabClicked = onCalendarTabClicked,
+            onSessionsTabClicked = onSessionsTabClicked,
             padding = padding,
         )
     }
@@ -77,7 +80,7 @@ fun MainScreens(
 fun MainScreensContent(
     component: MainComponent,
     onTotalPatientsClicked: () -> Unit,
-    onCalendarTabClicked: () -> Unit,
+    onSessionsTabClicked: () -> Unit,
     padding: PaddingValues,
 ) {
     Column(
@@ -85,17 +88,20 @@ fun MainScreensContent(
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
             .padding(padding),
-//            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Children(stack = component.childStack) {
             when (val child = it.instance) {
                 is MainComponent.Child.HomeChild -> HomeScreen(
+                    sessionViewModel = koinInject { parametersOf({}, { _: Long -> }) },
                     navigateToPatients = onTotalPatientsClicked,
-                    navigateToAppointments = onCalendarTabClicked,
+                    navigateToSessions = onSessionsTabClicked,
                     onNewPatient = { component.onNewPatientClicked(null) }
                 )
-                is MainComponent.Child.CalendarChild -> CalendarScreenContent()
+                is MainComponent.Child.SessionsChild -> SessionsScreen(
+                    onAddSession = child.component.onAddSession,
+                    viewModel = koinInject { parametersOf(child.component.onAddSession, child.component.onSessionSelected) }
+                )
                 is MainComponent.Child.ReportChild -> ReportScreenContent()
                 is MainComponent.Child.PatientsChild -> PatientsScreen(
                     viewModel = koinInject { parametersOf(child.component.onAddPatient, child.component.onPatientSelected) }
@@ -103,14 +109,12 @@ fun MainScreensContent(
                 is MainComponent.Child.NewPatientChild -> NewPatientScreen(
                     viewModel =  koinInject { parametersOf(child.component.selectedPatientId, child.component.onBack) }
                 )
+                is MainComponent.Child.NewSessionChild -> NewSessionScreen(
+                    viewModel =  koinInject { parametersOf(child.component.selectedSessionId, child.component.onBack) }
+                )
             }
         }
     }
-}
-
-@Composable
-fun CalendarScreenContent() {
-
 }
 
 @Composable
@@ -122,7 +126,7 @@ fun ReportScreenContent() {
 fun BottomNavigationBar(
     selectedScreen: BottomNavigationItem,
     onHomeTabClicked: () -> Unit,
-    onCalendarTabClicked: () -> Unit,
+    onSessionsTabClicked: () -> Unit,
     onPatientsTabClicked: () -> Unit,
     onReportTabClicked: () -> Unit
 ) {
@@ -137,8 +141,8 @@ fun BottomNavigationBar(
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
-            selected = selectedScreen == BottomNavigationItem.CALENDAR,
-            onClick = { onCalendarTabClicked() }
+            selected = selectedScreen == BottomNavigationItem.Sessions,
+            onClick = { onSessionsTabClicked() }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.Groups, contentDescription = null) },
@@ -154,5 +158,5 @@ fun BottomNavigationBar(
 }
 
 enum class BottomNavigationItem {
-    HOME, CALENDAR, PATIENTS, REPORTS
+    HOME, Sessions, PATIENTS, REPORTS
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -83,32 +84,32 @@ fun NewPatientScreenContent(
             )
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color(0xFF2196F3))
-                }
-            } else {
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF2196F3))
+            }
+        } else
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 PatientTextField(
                     value = uiState.firstName,
                     onValueChange = { onEvent(NewPatientEvents.OnFirstNameChanged(it)) },
-                    label = "Prénom",
+                    label = "Prénom*",
                     placeholder = "Entrez le prénom"
                 )
 
                 PatientTextField(
                     value = uiState.lastName,
                     onValueChange = { onEvent(NewPatientEvents.OnLastNameChanged(it)) },
-                    label = "Nom",
+                    label = "Nom*",
                     placeholder = "Entrez le nom"
                 )
 
@@ -122,7 +123,7 @@ fun NewPatientScreenContent(
                 PatientTextField(
                     value = uiState.contactParent,
                     onValueChange = { onEvent(NewPatientEvents.OnContactParentChanged(it)) },
-                    label = "Contact Parent",
+                    label = "Contact Parent*",
                     placeholder = "Numéro de téléphone"
                 )
 
@@ -154,13 +155,13 @@ fun NewPatientScreenContent(
                     ) {
                         StatusChip(
                             text = "Actif",
-                            isSelected = uiState.status == "Active",
+                            isSelected = uiState.status.uppercase() == "ACTIVE",
                             onClick = { onEvent(NewPatientEvents.OnStatusChanged("Active")) }
                         )
                         StatusChip(
                             text = "Archivé",
-                            isSelected = uiState.status == "Archived",
-                            onClick = { onEvent(NewPatientEvents.OnStatusChanged("Archived")) }
+                            isSelected = uiState.status.uppercase() == "ARCHIVED",
+                            onClick = { onEvent(NewPatientEvents.OnStatusChanged("ARCHIVED")) }
                         )
                     }
                 }
@@ -204,7 +205,6 @@ fun NewPatientScreenContent(
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
-        }
     }
 }
 

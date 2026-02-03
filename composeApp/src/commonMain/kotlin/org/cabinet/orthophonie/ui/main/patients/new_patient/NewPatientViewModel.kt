@@ -6,11 +6,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.cabinet.orthophonie.data.patients.PatientRepository
 import org.cabinet.orthophonie.database.PatientRecord
 import org.cabinet.orthophonie.utils.AppDispatchers
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 class NewPatientViewModel(
@@ -20,32 +19,44 @@ class NewPatientViewModel(
     private val onBack: () -> Unit
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(NewPatientState())
+    private val _state = MutableStateFlow(NewPatientState(
+        isLoading = true
+    ))
     val state = _state.asStateFlow()
 
-    private var selectedPatient: PatientRecord? = null
+    // Keep track of the original record if editing
+    private var originalPatient: PatientRecord? = null
 
     init {
-        if (selectedPatientId != null) {
-            _state.update { it.copy(
-                isLoading = true
-            )
-            }
+        loadPatientData()
+    }
+
+    private fun loadPatientData() {
+        val id = selectedPatientId
+        if (id == null) {
+            _state.update { it.copy(isLoading = false) }
+            return
+        } else {
             viewModelScope.launch(dispatchers.io) {
-                val patient = repository.getPatientById(selectedPatientId)
-                patient?.let { patient ->
-                    selectedPatient = patient
-                    _state.update { it.copy(
-                        firstName = patient.first_name,
-                        lastName = patient.last_name,
-                        dateBirth = patient.date_birth,
-                        contactParent = patient.contact_parent,
-                        school = patient.school,
-                        schoolClass = patient.school_class,
-                        status = patient.status,
-                        isLoading = false
-                    )
+                _state.update { it.copy(isLoading = true) }
+
+                val patient = repository.getPatientById(id)
+                if (patient != null) {
+                    originalPatient = patient
+                    _state.update {
+                        it.copy(
+                            firstName = patient.first_name,
+                            lastName = patient.last_name,
+                            dateBirth = patient.date_birth,
+                            contactParent = patient.contact_parent,
+                            school = patient.school,
+                            schoolClass = patient.school_class,
+                            status = patient.status,
+                            isLoading = false
+                        )
                     }
+                } else {
+                    _state.update { it.copy(isLoading = false, error = "Patient not found") }
                 }
             }
         }
@@ -53,10 +64,11 @@ class NewPatientViewModel(
 
     fun onEvent(event: NewPatientEvents) {
         when (event) {
-            is NewPatientEvents.OnFirstNameChanged -> _state.update { it.copy(firstName = event.value) }
-            is NewPatientEvents.OnLastNameChanged -> _state.update { it.copy(lastName = event.value) }
+            // Using .update for thread-safe UI state changes
+            is NewPatientEvents.OnFirstNameChanged -> _state.update { it.copy(firstName = event.value, error = null) }
+            is NewPatientEvents.OnLastNameChanged -> _state.update { it.copy(lastName = event.value, error = null) }
             is NewPatientEvents.OnDateBirthChanged -> _state.update { it.copy(dateBirth = event.value) }
-            is NewPatientEvents.OnContactParentChanged -> _state.update { it.copy(contactParent = event.value) }
+            is NewPatientEvents.OnContactParentChanged -> _state.update { it.copy(contactParent = event.value, error = null) }
             is NewPatientEvents.OnSchoolChanged -> _state.update { it.copy(school = event.value) }
             is NewPatientEvents.OnClassChanged -> _state.update { it.copy(schoolClass = event.value) }
             is NewPatientEvents.OnStatusChanged -> _state.update { it.copy(status = event.value) }
@@ -66,34 +78,41 @@ class NewPatientViewModel(
     }
 
     private fun savePatient() {
-        val currentState = _state.value
-        if (currentState.firstName.isBlank() || currentState.lastName.isBlank()  || currentState.contactParent.isBlank()) {
-            _state.update { it.copy(error = "Le prénom, le nom et le contact parent sont obligatoires") }
+        val s = _state.value
+
+        // 1. Validation Logic
+        if (s.firstName.isBlank() || s.lastName.isBlank() || s.contactParent.isBlank()) {
+            _state.update { it.copy(error = "Required fields * are missing") }
             return
         }
 
         viewModelScope.launch(dispatchers.io) {
-            _state.update { it.copy(isSavingLoading = true) }
+            _state.update { it.copy(isSavingLoading = true, error = null) }
             try {
-                val now = selectedPatient?.creation_date ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).toString()
+                // 2. Prepare the object
                 val patient = PatientRecord(
-                    id = selectedPatient?.id ?: 0,
-                    first_name = currentState.firstName,
-                    last_name = currentState.lastName,
-                    date_birth = currentState.dateBirth,
-                    contact_parent = currentState.contactParent,
-                    school = currentState.school,
-                    school_class = currentState.schoolClass,
-                    status = currentState.status,
-                    creation_date = now
+                    id = originalPatient?.id ?: 0,
+                    first_name = s.firstName.trim(),
+                    last_name = s.lastName.trim(),
+                    date_birth = s.dateBirth,
+                    contact_parent = s.contactParent.trim(),
+                    school = s.school?.trim(),
+                    school_class = s.schoolClass?.trim(),
+                    status = s.status.uppercase(),
+                    creation_date = originalPatient?.creation_date ?: Clock.System.now().toString()
                 )
-                if (selectedPatient == null)
+
+                // 3. Upsert (Update or Insert)
+                if (originalPatient == null) {
                     repository.insertPatient(patient)
-                else
+                } else {
                     repository.updatePatient(patient)
+                }
 
                 _state.update { it.copy(isSavingLoading = false, isSaved = true) }
-                viewModelScope.launch(dispatchers.main) {
+
+                // 4. Navigation on Main Thread
+                withContext(dispatchers.main) {
                     onBack()
                 }
             } catch (e: Exception) {
