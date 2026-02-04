@@ -31,7 +31,7 @@ private val daoModule = module {
 }
 
 private val repoModule = module {
-    single { PatientRepository(get(), get()) }
+    single { PatientRepository(get(), get(), get()) }
     single { SessionRepository(get(), get(), get()) }
 }
 

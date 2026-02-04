@@ -109,6 +109,11 @@ class SessionRepository(
             dao.insertSession(session)
         }
 
+    suspend fun updateSession(session: SessionRecord) =
+        withContext(dispatchers.io) {
+            dao.updateSession(session)
+        }
+
     suspend fun updateSessionAttendance(id: Long, attendanceStatus: String, notes: String?) =
         withContext(dispatchers.io) {
             dao.updateSessionAttendance(id, attendanceStatus, notes)

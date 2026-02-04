@@ -44,6 +44,22 @@ insertSession:
 INSERT INTO sessionRecord (patient_id, start_time, session_type, amount, is_recurring)
 VALUES (?, ?, ?, ?, ?);
 
+-- Update session
+updateSession:
+UPDATE sessionRecord
+SET
+    patient_id = ?,
+    start_time = ?,
+    duration_minutes = ?,
+    session_type = ?,
+    attendance_status = ?,
+    is_recurring = ?,
+    notes = ?,
+    amount = ?,
+    paid_amount = ?,
+    paid_at = ?
+WHERE id = ?;
+
 -- Update session attendance and clinical notes
 updateSessionAttendance:
 UPDATE sessionRecord

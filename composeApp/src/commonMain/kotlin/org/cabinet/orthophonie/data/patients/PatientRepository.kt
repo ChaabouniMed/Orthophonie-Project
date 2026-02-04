@@ -2,24 +2,35 @@ package org.cabinet.orthophonie.data.patients
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import org.cabinet.orthophonie.database.PatientRecord
 import org.cabinet.orthophonie.utils.AppDispatchers
 
 class PatientRepository(
     private val dao: PatientDao,
-    private val dispatchers: AppDispatchers
+    private val dispatchers: AppDispatchers,
+    applicationScope: CoroutineScope
 ) {
+
+    private val allPatientsFlow: Flow<List<PatientRecord>> = dao.getPatients()
+        .asFlow()
+        .mapToList(dispatchers.io)
+        .distinctUntilChanged()
 
     /* ---------- GET ---------- */
 
-    fun getPatients(): Flow<List<PatientRecord>> =
-        dao.getPatients()
-            .asFlow()
-            .mapToList(dispatchers.io)
-            .distinctUntilChanged()
+    val patients: StateFlow<List<PatientRecord>?> = allPatientsFlow
+        .stateIn(
+            scope = applicationScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     suspend fun getPatientById(id: Long): PatientRecord? =
         withContext(dispatchers.io) {

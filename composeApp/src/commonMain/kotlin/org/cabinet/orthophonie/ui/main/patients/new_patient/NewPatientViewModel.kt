@@ -32,15 +32,12 @@ class NewPatientViewModel(
     }
 
     private fun loadPatientData() {
-        val id = selectedPatientId
-        if (id == null) {
+        if (selectedPatientId == null) {
             _state.update { it.copy(isLoading = false) }
             return
         } else {
             viewModelScope.launch(dispatchers.io) {
-                _state.update { it.copy(isLoading = true) }
-
-                val patient = repository.getPatientById(id)
+                val patient = repository.getPatientById(selectedPatientId)
                 if (patient != null) {
                     originalPatient = patient
                     _state.update {

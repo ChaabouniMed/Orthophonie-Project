@@ -165,12 +165,17 @@ fun SessionListItem(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${session.first_name} ${session.last_name}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color(0xFF1A1C1E)
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${session.first_name} ${session.last_name}",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color(0xFF1A1C1E)
+                        text = session.session_type ?: "Consultation",
+                        color = Color.Gray,
+                        fontSize = 15.sp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
@@ -186,13 +191,6 @@ fun SessionListItem(
                         )
                     }
                 }
-                
-                Text(
-                    text = session.session_type ?: "Consultation",
-                    color = Color.Gray,
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
 
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {

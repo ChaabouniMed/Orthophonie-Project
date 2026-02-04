@@ -28,6 +28,26 @@ class SessionDao(
     /* ---------- UPDATE ---------- */
 
     /**
+     * Updates the session
+     */
+    suspend fun updateSession(session: SessionRecord) =
+        withContext(dispatchers.io) {
+            queries.updateSession(
+                patient_id = session.patient_id,
+                start_time = session.start_time,
+                session_type = session.session_type,
+                amount = session.amount,
+                is_recurring = session.is_recurring,
+                attendance_status = session.attendance_status,
+                notes = session.notes,
+                paid_amount = session.paid_amount,
+                duration_minutes = session.duration_minutes,
+                paid_at = session.paid_at,
+                id = session.id,
+            )
+        }
+
+    /**
      * Updates the attendance and clinical notes for a session
      */
     suspend fun updateSessionAttendance(id: Long, attendanceStatus: String, notes: String?) =

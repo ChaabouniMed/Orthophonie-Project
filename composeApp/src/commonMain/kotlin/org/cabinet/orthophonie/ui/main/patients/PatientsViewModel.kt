@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import org.cabinet.orthophonie.data.patients.PatientRepository
@@ -24,13 +23,13 @@ class PatientsViewModel(
     //Il faut séparer le state coming from bdd from le state coming from l'ui ou l'utilisateur
     private val _searchQuery = MutableStateFlow("")
 
-    // 2. Reactive UI State
-    // Combines the database flow from SqlDelight with the local search query flow
     val state: StateFlow<PatientsUiState> = combine(
-        repository.getPatients(),
+        repository.patients,
         _searchQuery
     ) { patientsList, query ->
-        // Filtering is done in-memory using the latest list emitted by the database
+        if (patientsList == null) {
+            return@combine PatientsUiState(isLoading = true, searchQuery = query)
+        }
         val filtered = if (query.isEmpty()) {
             patientsList
         } else {
@@ -45,8 +44,6 @@ class PatientsViewModel(
             filteredPatients = filtered
         )
     }
-        // Emit loading state when the flow collection starts
-        .onStart { emit(PatientsUiState(isLoading = true)) }
         // Ensure filtering and mapping happen on the IO dispatcher (off the Main thread)
         .flowOn(dispatchers.io)
         // Convert the cold Flow into a hot StateFlow for the UI
@@ -54,7 +51,10 @@ class PatientsViewModel(
             scope = viewModelScope,
             // Keeps the flow active for 5 seconds after the last UI subscriber disconnects
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = PatientsUiState(isLoading = true)
+            initialValue = PatientsUiState(
+                filteredPatients = repository.patients.value?: emptyList(),
+                isLoading = repository.patients.value?.isEmpty() ?: true
+            )
         )
 
     /**
