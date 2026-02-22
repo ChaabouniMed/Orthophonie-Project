@@ -95,7 +95,7 @@ class NewPatientViewModel(
                     contact_parent = s.contactParent.trim(),
                     school = s.school?.trim(),
                     school_class = s.schoolClass?.trim(),
-                    status = s.status.uppercase(),
+                    status = s.status,
                     creation_date = originalPatient?.creation_date ?: Clock.System.now().toString()
                 )
 

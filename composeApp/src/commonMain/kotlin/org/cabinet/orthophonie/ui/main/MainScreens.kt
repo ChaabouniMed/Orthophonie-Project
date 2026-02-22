@@ -93,24 +93,54 @@ fun MainScreensContent(
         Children(stack = component.childStack) {
             when (val child = it.instance) {
                 is MainComponent.Child.HomeChild -> HomeScreen(
-                    sessionViewModel = koinInject { parametersOf({}, { _: Long -> }) },
+                    sessionViewModel = koinInject {
+                        parametersOf(
+                            child.component.onAddSession,
+                            child.component.onSessionSelected
+                        )
+                    },
                     navigateToPatients = onTotalPatientsClicked,
                     navigateToSessions = onSessionsTabClicked,
-                    onNewPatient = { component.onNewPatientClicked(null) }
+                    onNewPatient = { component.onNewPatientClicked(null) },
+                    onNewSession = { component.onNewSessionClicked(null) }
                 )
+
                 is MainComponent.Child.SessionsChild -> SessionsScreen(
                     onAddSession = child.component.onAddSession,
-                    viewModel = koinInject { parametersOf(child.component.onAddSession, child.component.onSessionSelected) }
+                    viewModel = koinInject {
+                        parametersOf(
+                            child.component.onAddSession,
+                            child.component.onSessionSelected
+                        )
+                    }
                 )
+
                 is MainComponent.Child.ReportChild -> ReportScreenContent()
                 is MainComponent.Child.PatientsChild -> PatientsScreen(
-                    viewModel = koinInject { parametersOf(child.component.onAddPatient, child.component.onPatientSelected) }
+                    viewModel = koinInject {
+                        parametersOf(
+                            child.component.onAddPatient,
+                            child.component.onPatientSelected
+                        )
+                    }
                 )
+
                 is MainComponent.Child.NewPatientChild -> NewPatientScreen(
-                    viewModel =  koinInject { parametersOf(child.component.selectedPatientId, child.component.onBack) }
+                    viewModel = koinInject {
+                        parametersOf(
+                            child.component.selectedPatientId,
+                            child.component.onBack
+                        )
+                    }
                 )
+
                 is MainComponent.Child.NewSessionChild -> NewSessionScreen(
-                    viewModel =  koinInject { parametersOf(child.component.selectedSessionId, child.component.onBack) }
+                    viewModel = koinInject {
+                        parametersOf(
+                            child.component.selectedSessionId,
+                            child.component.onBack
+                        )
+                    }
                 )
             }
         }

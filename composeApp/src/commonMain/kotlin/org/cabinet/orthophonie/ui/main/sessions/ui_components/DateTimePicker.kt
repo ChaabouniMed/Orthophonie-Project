@@ -1,4 +1,4 @@
-package org.cabinet.orthophonie.utils.time
+package org.cabinet.orthophonie.ui.main.sessions.ui_components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -12,6 +12,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.cabinet.orthophonie.utils.toLocalDateTime
 import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,8 +36,7 @@ fun MyDatePickerDialog(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         // Conversion correcte des millisecondes UTC en LocalDate
-                        val date = Instant.fromEpochMilliseconds(millis)
-                            .toLocalDateTime(TimeZone.UTC).date
+                        val date = millis.toLocalDateTime().date
                         onConfirmRequest(date)
                     }
                 }

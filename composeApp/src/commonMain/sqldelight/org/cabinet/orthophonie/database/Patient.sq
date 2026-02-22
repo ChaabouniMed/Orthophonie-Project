@@ -1,3 +1,5 @@
+import org.cabinet.orthophonie.ui.main.patients.PatientStatus;
+
 CREATE TABLE patientRecord (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
@@ -6,7 +8,7 @@ CREATE TABLE patientRecord (
     contact_parent TEXT NOT NULL,
     school TEXT,
     school_class TEXT,
-    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ARCHIVED')), -- Active, Archived
+    status TEXT AS PatientStatus NOT NULL DEFAULT 'ACTIVE',
     creation_date TEXT NOT NULL
 );
 

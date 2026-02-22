@@ -17,6 +17,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import org.cabinet.orthophonie.database.GetSessions
 import org.cabinet.orthophonie.database.SessionRecord
+import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
 import org.cabinet.orthophonie.utils.AppDispatchers
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -30,6 +31,9 @@ class SessionRepository(
     private val allSessionsFlow: Flow<List<GetSessions>> = dao.getSessions()
         .asFlow()
         .mapToList(dispatchers.io)
+        .map { list ->
+            list.sortedBy { it.start_time }
+        }
         .distinctUntilChanged()
 
     /* ---------- GET (Reactive Flows) ---------- */
@@ -37,20 +41,20 @@ class SessionRepository(
     /**
      * Get all sessions with patient details for the main schedule.
      */
-    val sessions: StateFlow<List<GetSessions>> = allSessionsFlow
+    val sessions: StateFlow<List<GetSessions>?> = allSessionsFlow
         .stateIn(
             scope = applicationScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = null
         )
 
     /**
      * Get today sessions with patient details for the main schedule.
      */
-    val todaySessions: StateFlow<List<GetSessions>> = sessions
+    val todaySessions: StateFlow<List<GetSessions>?> = sessions
     .map { list ->
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        list.filter { session ->
+        list?.filter { session ->
             try {
                 Instant.parse(session.start_time)
                     .toLocalDateTime(TimeZone.currentSystemDefault())
@@ -64,7 +68,7 @@ class SessionRepository(
     .stateIn(
     scope = applicationScope,
     started = SharingStarted.WhileSubscribed(5000),
-    initialValue = emptyList()
+    initialValue = null
     )
 
     /**
@@ -114,7 +118,7 @@ class SessionRepository(
             dao.updateSession(session)
         }
 
-    suspend fun updateSessionAttendance(id: Long, attendanceStatus: String, notes: String?) =
+    suspend fun updateSessionAttendance(id: Long, attendanceStatus: AttendanceStatus, notes: String? = null) =
         withContext(dispatchers.io) {
             dao.updateSessionAttendance(id, attendanceStatus, notes)
         }

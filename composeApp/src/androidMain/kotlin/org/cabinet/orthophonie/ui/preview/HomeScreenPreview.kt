@@ -2,7 +2,6 @@ package org.cabinet.orthophonie.ui.preview
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import org.cabinet.orthophonie.ui.main.home.HomeScreen
 import org.cabinet.orthophonie.ui.main.home.HomeScreenContent
 import org.cabinet.orthophonie.ui.theme.AppTheme
 
@@ -16,7 +15,10 @@ fun HomeScreenPreview() {
             todaySessions = listOf(),
             navigateToPatients = {},
             navigateToSessions = {},
-            onNewPatient = {}
+            onNewPatient = {},
+            onNewSession = {},
+            onSessionSelected = {},
+            onSessionAttendanceStatusChanged = { _, _ -> }
         )
     }
 }

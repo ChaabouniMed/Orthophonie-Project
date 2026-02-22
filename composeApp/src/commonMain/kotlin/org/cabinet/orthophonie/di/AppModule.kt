@@ -52,8 +52,9 @@ private val viewModelModule = module {
             onBack
         )
     }
-    viewModel { (onAddSession: () -> Unit, onSessionSelected: (Long) -> Unit) ->
+    single { (onAddSession: () -> Unit, onSessionSelected: (Long) -> Unit) ->
         SessionsViewModel(
+            get(),
             get(),
             get(),
             onAddSession,

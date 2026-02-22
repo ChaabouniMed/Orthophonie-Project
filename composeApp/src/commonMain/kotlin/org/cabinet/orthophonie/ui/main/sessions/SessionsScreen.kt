@@ -1,50 +1,54 @@
 package org.cabinet.orthophonie.ui.main.sessions
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import org.cabinet.orthophonie.database.GetSessions
+import kotlinx.datetime.LocalDate
+import org.cabinet.orthophonie.ui.main.sessions.ui_components.SessionListItem
+import org.cabinet.orthophonie.utils.toDropdownMenuItemColor
+import org.cabinet.orthophonie.utils.toDropdownMenuItemIcon
+import org.cabinet.orthophonie.utils.toLocalDateTime
 
 @Composable
 fun SessionsScreen(
@@ -70,6 +74,8 @@ fun SessionsScreenContent(
     uiState: SessionsUiState,
     onEvent: (SessionsEvents) -> Unit
 ) {
+    val datePickerState = rememberDatePickerState()
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -95,25 +101,51 @@ fun SessionsScreenContent(
                 modifier = Modifier.padding(16.dp)
             )
 
+            FiltersRow(uiState, onEvent)
+
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFF2196F3))
                 }
-            } else if (uiState.sessions.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Aucune séance prévue", color = Color.Gray)
-                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(uiState.sessions) { session ->
-                        SessionListItem(
-                            session = session,
-                            onClick = { onEvent(SessionsEvents.OnSessionClicked(session.id)) }
-                        )
+                    // 1. Affichage du Calendrier (Condition unique)
+                    if (uiState.sessionUserUiState.showCalendar) {
+                        item {
+                            CompactDatePicker(
+                                state = datePickerState,
+                                onDateSelected = { onEvent(SessionsEvents.OnDateFilterChanged(it)) }
+                            )
+                        }
+                    }
+
+                    // 2. Liste des Sessions
+                    if (uiState.filteredSessions.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillParentMaxHeight(0.1f)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Aucune séance trouvée", color = Color.Gray)
+                            }
+                        }
+                    } else {
+                        items(uiState.filteredSessions, key = { it.id }) { session ->
+                            SessionListItem(
+                                session = session,
+                                onClick = { onEvent(SessionsEvents.OnSessionClicked(session.id)) },
+                                onAttendanceStatusChanged = { status ->
+                                    onEvent(SessionsEvents.OnSessionAttendanceChanged(session.id, status))
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -122,144 +154,180 @@ fun SessionsScreenContent(
 }
 
 @Composable
-fun SessionListItem(
-    session: GetSessions,
-    onClick: () -> Unit
+fun FiltersRow(
+    uiState: SessionsUiState,
+    onEvent: (SessionsEvents) -> Unit
 ) {
-    val dateTime = Instant.parse(session.start_time).toLocalDateTime(TimeZone.currentSystemDefault())
-    val dateStr = "${dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${dateTime.day}, ${dateTime.year}"
-    
-    val hour = if (dateTime.hour > 12) dateTime.hour - 12 else if (dateTime.hour == 0) 12 else dateTime.hour
-    val amPm = if (dateTime.hour >= 12) "PM" else "AM"
-    val timeStr = "${hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')} $amPm"
+    var showPatientMenu by remember { mutableStateOf(false) }
+    var showSessionTypeMenu by remember { mutableStateOf(false) }
+    var showAttendanceStatusMenu by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        onClick = onClick
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Profile Icon
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE3F2FD)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color(0xFF2196F3),
-                    modifier = Modifier.size(32.dp)
+        // Patient Filter
+        item {
+            Box {
+                FilterChip(
+                    text = uiState.patients.find { it.id == uiState.sessionUserUiState.selectedPatientId }?.let { "${it.first_name} ${it.last_name}" } ?: "Patient",
+                    isSelected = uiState.sessionUserUiState.selectedPatientId != null,
+                    onClick = { showPatientMenu = true }
                 )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${session.first_name} ${session.last_name}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF1A1C1E)
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = session.session_type ?: "Consultation",
-                        color = Color.Gray,
-                        fontSize = 15.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = Color(0xFFE3F2FD),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = session.attendance_status ?: "Confirmed",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            color = Color(0xFF2196F3),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                DropdownMenu(
+                    expanded = showPatientMenu,
+                    onDismissRequest = { showPatientMenu = false }
+                ) {
+                    DropdownMenuItem(text = { Text("All") }, onClick = { onEvent(SessionsEvents.OnPatientFilterChanged(null)); showPatientMenu = false })
+                    uiState.patients.forEach { patient ->
+                        DropdownMenuItem(
+                            text = { Text("${patient.first_name} ${patient.last_name}") },
+                            onClick = {
+                                onEvent(SessionsEvents.OnPatientFilterChanged(patient.id))
+                                showPatientMenu = false
+                            }
                         )
                     }
                 }
+            }
+        }
 
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.CalendarMonth,
-                            contentDescription = null,
-                            tint = Color.LightGray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = dateStr,
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null,
-                            tint = Color(0xFF2196F3),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = timeStr,
-                            color = Color(0xFF2196F3),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
+        // Calendar Filter
+        item {
+            Box {
+                FilterChip(
+                    text = "Calendrier",
+                    isSelected = uiState.sessionUserUiState.showCalendar,
+                    onClick = { onEvent(SessionsEvents.OnShowCalendarChanged(!uiState.sessionUserUiState.showCalendar)) }
+                )
+            }
+        }
+
+        // Type Filter
+        item {
+            Box {
+                FilterChip(
+                    text = uiState.sessionUserUiState.selectedSessionType?.name ?: "Session Type",
+                    isSelected = uiState.sessionUserUiState.selectedSessionType != null,
+                    onClick = { showSessionTypeMenu = true }
+                )
+                DropdownMenu(
+                    expanded = showSessionTypeMenu,
+                    onDismissRequest = { showSessionTypeMenu = false }
+                ) {
+                    DropdownMenuItem(text = { Text("All") }, onClick = { onEvent(SessionsEvents.OnTypeFilterChanged(null)); showSessionTypeMenu = false })
+                    SessionType.entries.forEach { type ->
+                        DropdownMenuItem(
+                            text = { Text(type.name) },
+                            onClick = {
+                                onEvent(SessionsEvents.OnTypeFilterChanged(if (uiState.sessionUserUiState.selectedSessionType == type) null else type))
+                                showSessionTypeMenu = false
+                            }
                         )
                     }
                 }
-
-//                Row(verticalAlignment = Alignment.CenterVertically) {
-//                    Icon(
-//                        Icons.Default.CalendarMonth,
-//                        contentDescription = null,
-//                        tint = Color.LightGray,
-//                        modifier = Modifier.size(18.dp)
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Text(
-//                        text = dateStr,
-//                        color = Color.Gray,
-//                        fontSize = 14.sp
-//                    )
-//                    Spacer(modifier = Modifier.width(16.dp))
-//                    Icon(
-//                        Icons.Default.Schedule,
-//                        contentDescription = null,
-//                        tint = Color(0xFF2196F3),
-//                        modifier = Modifier.size(18.dp)
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Text(
-//                        text = timeStr,
-//                        color = Color(0xFF2196F3),
-//                        fontSize = 14.sp,
-//                        fontWeight = FontWeight.Bold
-//                    )
-//                }
             }
+        }
 
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = Color.LightGray
+        // Attendance Filter
+        item {
+            Box {
+                FilterChip(
+                    text = uiState.sessionUserUiState.selectedAttendanceStatus?.name ?: "Attendance",
+                    isSelected = uiState.sessionUserUiState.selectedAttendanceStatus != null,
+                    onClick = { showAttendanceStatusMenu = true }
+                )
+                DropdownMenu(
+                    expanded = showAttendanceStatusMenu,
+                    onDismissRequest = { showAttendanceStatusMenu = false }
+                ) {
+                    DropdownMenuItem(text = { Text("All") }, onClick = { onEvent(SessionsEvents.OnAttendanceFilterChanged(null)); showAttendanceStatusMenu = false })
+                    AttendanceStatus.entries.forEach { attendanceStatus ->
+                        DropdownMenuItem(
+                            text = { Text(attendanceStatus.name) },
+                            onClick = {
+                                onEvent(SessionsEvents.OnAttendanceFilterChanged(if (uiState.sessionUserUiState.selectedAttendanceStatus == attendanceStatus) null else attendanceStatus))
+                                showAttendanceStatusMenu = false
+                            },
+                            colors = MenuDefaults.itemColors(textColor = attendanceStatus.toDropdownMenuItemColor()),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = attendanceStatus.toDropdownMenuItemIcon(),
+                                    contentDescription = null,
+                                    tint = attendanceStatus.toDropdownMenuItemColor()
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Pending Payment Filter
+        item {
+            FilterChip(
+                text = "Non payé",
+                isSelected = uiState.sessionUserUiState.onlyPendingPayment,
+                onClick = { onEvent(SessionsEvents.OnPendingPaymentFilterChanged(!uiState.sessionUserUiState.onlyPendingPayment)) }
             )
         }
+    }
+}
+
+@Composable
+fun FilterChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (isSelected) Color(0xFFE3F2FD) else Color.White,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .height(36.dp),
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                color = if (isSelected) Color(0xFF2196F3) else Color.Gray,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CompactDatePicker(
+    state: DatePickerState,
+    onDateSelected: (LocalDate) -> Unit
+) {
+    LaunchedEffect(state.selectedDateMillis) {
+        state.selectedDateMillis?.let { millis ->
+            val selectedDate = millis.toLocalDateTime().date
+            onDateSelected(selectedDate)
+        }
+    }
+
+    Card(
+        modifier = Modifier.padding(bottom = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        DatePicker(
+            state = state,
+            title = null,
+            headline = null,
+            showModeToggle = false,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

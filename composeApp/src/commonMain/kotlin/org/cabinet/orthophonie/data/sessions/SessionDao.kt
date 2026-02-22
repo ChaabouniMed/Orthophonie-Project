@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import org.cabinet.orthophonie.database.SessionQueries
 import org.cabinet.orthophonie.database.SessionRecord
 import org.cabinet.orthophonie.database.GetSessions // Type généré par SQLDelight pour le JOIN
+import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
 import org.cabinet.orthophonie.utils.AppDispatchers
 
 class SessionDao(
@@ -50,7 +51,7 @@ class SessionDao(
     /**
      * Updates the attendance and clinical notes for a session
      */
-    suspend fun updateSessionAttendance(id: Long, attendanceStatus: String, notes: String?) =
+    suspend fun updateSessionAttendance(id: Long, attendanceStatus: AttendanceStatus, notes: String?) =
         withContext(dispatchers.io) {
             queries.updateSessionAttendance(
                 attendance_status = attendanceStatus,

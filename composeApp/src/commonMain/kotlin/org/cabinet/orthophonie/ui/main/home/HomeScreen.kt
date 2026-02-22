@@ -39,8 +39,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.cabinet.orthophonie.database.GetSessions
-import org.cabinet.orthophonie.ui.main.sessions.SessionListItem
+import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
+import org.cabinet.orthophonie.ui.main.sessions.SessionsEvents
 import org.cabinet.orthophonie.ui.main.sessions.SessionsViewModel
+import org.cabinet.orthophonie.ui.main.sessions.ui_components.SessionListItem
 import org.jetbrains.compose.resources.stringResource
 import orthophonie.composeapp.generated.resources.Res.string
 import orthophonie.composeapp.generated.resources.good_morning
@@ -60,23 +62,32 @@ fun HomeScreen(
     sessionViewModel: SessionsViewModel,
     navigateToPatients: () -> Unit,
     navigateToSessions: () -> Unit,
-    onNewPatient: () -> Unit
+    onNewPatient: () -> Unit,
+    onNewSession: () -> Unit
 ) {
     val sessionsUiState by sessionViewModel.state.collectAsState()
     HomeScreenContent(
         todaySessions = sessionsUiState.todaySessions,
+        onSessionAttendanceStatusChanged = { sessionId, attendanceStatus ->
+            sessionViewModel.onEvent(SessionsEvents.OnSessionAttendanceChanged(sessionId, attendanceStatus))
+        },
         navigateToPatients = navigateToPatients,
         navigateToSessions = navigateToSessions,
-        onNewPatient = onNewPatient
+        onSessionSelected = { sessionViewModel.onEvent(SessionsEvents.OnSessionClicked(it)) },
+        onNewPatient = onNewPatient,
+        onNewSession = onNewSession
     )
 }
 
 @Composable
 fun HomeScreenContent(
     todaySessions: List<GetSessions>,
+    onSessionAttendanceStatusChanged: (sessionId: Long, attendanceStatus: AttendanceStatus) -> Unit,
     navigateToPatients: () -> Unit = {},
     navigateToSessions: () -> Unit = {},
-    onNewPatient: () -> Unit = {}
+    onSessionSelected: (sessionId: Long) -> Unit,
+    onNewPatient: () -> Unit = {},
+    onNewSession: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.padding(16.dp),
@@ -91,9 +102,14 @@ fun HomeScreenContent(
         }
         item { SessionsSection(
             todaySessions,
-            navigateToSessions
+            navigateToSessions,
+            onSessionSelected = onSessionSelected,
+            onAttendanceStatusChanged = onSessionAttendanceStatusChanged
         ) }
-        item { QuickActionsSection(onNewPatient) }
+        item { QuickActionsSection(
+            onNewPatient,
+            onNewSession
+            ) }
     }
 }
 
@@ -214,7 +230,9 @@ fun SummaryCard(
 @Composable
 fun SessionsSection(
     todaySessions: List<GetSessions>,
-    navigateToSessions: () -> Unit
+    navigateToSessions: () -> Unit,
+    onAttendanceStatusChanged: (sessionId: Long, attendanceStatus: AttendanceStatus) -> Unit,
+    onSessionSelected: (sessionId: Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -234,15 +252,21 @@ fun SessionsSection(
 
         todaySessions.map {
             SessionListItem(
-                it,
-                {}
+                session = it,
+                onClick = { onSessionSelected(it.id) },
+                onAttendanceStatusChanged = { attendanceStatus ->
+                    onAttendanceStatusChanged(it.id, attendanceStatus)
+                }
             )
         }
     }
 }
 
 @Composable
-fun QuickActionsSection(onNewPatient: () -> Unit) {
+fun QuickActionsSection(
+    onNewPatient: () -> Unit,
+    onNewSession: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = stringResource(string.quick_actions),
@@ -260,7 +284,7 @@ fun QuickActionsSection(onNewPatient: () -> Unit) {
                 label = stringResource(string.new_session),
                 icon = Icons.Default.Add,
                 modifier = Modifier.weight(1f),
-                onClick = {}
+                onClick = onNewSession
             )
         }
     }

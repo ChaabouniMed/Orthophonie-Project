@@ -1,5 +1,7 @@
 package org.cabinet.orthophonie.ui.main.patients.new_patient
 
+import org.cabinet.orthophonie.ui.main.patients.PatientStatus
+
 data class NewPatientState(
     val firstName: String = "",
     val lastName: String = "",
@@ -7,7 +9,7 @@ data class NewPatientState(
     val contactParent: String = "",
     val school: String? = null,
     val schoolClass: String ? = null,
-    val status: String = "Active", // Default to Active
+    val status: PatientStatus = PatientStatus.ACTIVE,
     val isLoading: Boolean = false,
     val isSavingLoading: Boolean = false,
     val isSaved: Boolean = false,

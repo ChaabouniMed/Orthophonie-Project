@@ -34,11 +34,16 @@ class MainComponent(
 
     private fun createChild(config: Config, componentContext: ComponentContext): Child =
         when (config) {
-            is Config.Home -> Child.HomeChild(HomeComponent(componentContext))
+            is Config.Home -> Child.HomeChild(HomeComponent(
+                componentContext,
+                onAddSession = { onNewSessionClicked(null) },
+                onSessionSelected = { onNewSessionClicked(it) }
+            ))
             is Config.Sessions -> Child.SessionsChild(SessionsComponent(
                 componentContext,
                 onAddSession = { onNewSessionClicked(null) },
-                onSessionSelected = { onNewSessionClicked(it) }))
+                onSessionSelected = { onNewSessionClicked(it) }
+            ))
             is Config.Report -> Child.ReportChild(ReportComponent(componentContext))
             is Config.Patients -> Child.PatientsChild(
                 PatientsComponent(

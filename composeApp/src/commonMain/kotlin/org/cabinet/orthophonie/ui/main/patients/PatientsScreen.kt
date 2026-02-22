@@ -1,6 +1,7 @@
 package org.cabinet.orthophonie.ui.main.patients
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,8 +28,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -107,6 +111,22 @@ fun PatientsScreenContent(
                 singleLine = true
             )
 
+            // Status Filter Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PatientStatusFilter.entries.forEach { statusFilter ->
+                    StatusFilterChip(
+                        text = statusFilter.text,
+                        isSelected = uiState.selectedStatus == statusFilter,
+                        onClick = { onEvent(PatientsScreenEvents.OnStatusFilterChanged(statusFilter)) }
+                    )
+                }
+            }
+
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -119,27 +139,55 @@ fun PatientsScreenContent(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Aucun patient", color = Color.Gray)
+                    Text("Aucun patient correspondant", color = Color.Gray)
                 }
-            } else
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(
-                    items = uiState.filteredPatients,
-                    key = { it.id }
-                ) { patient ->
-                    PatientListItem(
-                        name = "${patient.first_name} ${patient.last_name}",
-                        phone = patient.contact_parent
-                    ) {
-                        onEvent(PatientsScreenEvents.OnPatientSelected(patient.id))
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = uiState.filteredPatients,
+                        key = { it.id }
+                    ) { patient ->
+                        PatientListItem(
+                            name = "${patient.first_name} ${patient.last_name}",
+                            phone = patient.contact_parent
+                        ) {
+                            onEvent(PatientsScreenEvents.OnPatientSelected(patient.id))
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StatusFilterChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (isSelected) Color(0xFFE3F2FD) else Color.White,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .height(40.dp),
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                color = if (isSelected) Color(0xFF2196F3) else Color.Gray,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp
+            )
         }
     }
 }

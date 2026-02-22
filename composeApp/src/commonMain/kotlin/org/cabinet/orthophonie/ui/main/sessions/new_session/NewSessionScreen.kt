@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Schedule
@@ -47,11 +49,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.cabinet.orthophonie.database.PatientRecord
-import org.cabinet.orthophonie.utils.time.MyDatePickerDialog
-import org.cabinet.orthophonie.utils.time.MyTimePickerDialog
+import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
+import org.cabinet.orthophonie.ui.main.sessions.SessionType
+import org.cabinet.orthophonie.ui.main.sessions.ui_components.MyDatePickerDialog
+import org.cabinet.orthophonie.ui.main.sessions.ui_components.MyTimePickerDialog
 
 @Composable
 fun NewSessionScreen(
@@ -169,14 +176,56 @@ fun NewSessionScreenContent(
                 OutlinedTextField(
                     value = uiState.amount,
                     onValueChange = { onEvent(NewSessionEvents.OnAmountChanged(it)) },
-                    label = { Text("Montant (DZD)") },
+                    label = { Text("Montant (DT)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White
+                    ),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
                     )
                 )
+
+                // Paid Amount
+                if(uiState.attendanceStatus == AttendanceStatus.PRESENT) {
+                    OutlinedTextField(
+                        value = uiState.paidAmount,
+                        onValueChange = { onEvent(NewSessionEvents.OnPaidAmountChanged(it)) },
+                        label = { Text("Montant payé (DT)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        )
+                    )
+                    OutlinedTextField(
+                        value = uiState.notes,
+                        onValueChange = { onEvent(NewSessionEvents.OnNotesChanged(it)) },
+                        label = { Text("Notes") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color.Gray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            unfocusedBorderColor = Color.LightGray
+                        ),
+                        minLines = 4,
+                        maxLines = 10,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Default
+                        )
+                    )
+                }
 
                 // Recurring
                 Row(
@@ -304,8 +353,8 @@ fun ClickableField(
 
 @Composable
 fun TypeSelector(
-    selectedType: String,
-    onTypeSelected: (String) -> Unit
+    selectedType: SessionType,
+    onTypeSelected: (SessionType) -> Unit
 ) {
     Column {
         Text(
@@ -314,8 +363,8 @@ fun TypeSelector(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TypeChip("NORMAL", selectedType == "NORMAL", onClick = { onTypeSelected("NORMAL") })
-            TypeChip("BILAN", selectedType == "BILAN", onClick = { onTypeSelected("BILAN") })
+            TypeChip(SessionType.NORMAL.name, selectedType == SessionType.NORMAL, onClick = { onTypeSelected(SessionType.NORMAL) })
+            TypeChip(SessionType.BILAN.name, selectedType == SessionType.BILAN, onClick = { onTypeSelected(SessionType.BILAN) })
         }
     }
 }

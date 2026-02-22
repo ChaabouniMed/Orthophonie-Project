@@ -18,8 +18,10 @@ import kotlinx.datetime.toLocalDateTime
 import org.cabinet.orthophonie.data.patients.PatientRepository
 import org.cabinet.orthophonie.data.sessions.SessionRepository
 import org.cabinet.orthophonie.database.SessionRecord
+import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
 import org.cabinet.orthophonie.utils.AppDispatchers
 import kotlin.collections.emptyList
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 class NewSessionViewModel(
@@ -74,7 +76,10 @@ class NewSessionViewModel(
                             selectedDate = dateTime.date,
                             selectedTime = dateTime.time,
                             sessionType = session.session_type,
+                            attendanceStatus = session.attendance_status,
                             amount = session.amount.toString(),
+                            paidAmount = session.paid_amount.toString(),
+                            notes = session.notes ?: "",
                             isRecurring = session.is_recurring == true,
                             isLoading = false
                         ) }
@@ -98,6 +103,8 @@ class NewSessionViewModel(
             is NewSessionEvents.OnTimeSelected -> _state.update { it.copy(selectedTime = event.time) }
             is NewSessionEvents.OnSessionTypeChanged -> _state.update { it.copy(sessionType = event.type) }
             is NewSessionEvents.OnAmountChanged -> _state.update { it.copy(amount = event.amount) }
+            is NewSessionEvents.OnPaidAmountChanged -> _state.update { it.copy(paidAmount = event.paidAmount) }
+            is NewSessionEvents.OnNotesChanged -> _state.update { it.copy(notes = event.notes) }
             is NewSessionEvents.OnRecurringChanged -> _state.update { it.copy(isRecurring = event.isRecurring) }
             NewSessionEvents.OnBackClicked -> onBack()
             NewSessionEvents.OnSaveSession -> saveSession()
@@ -115,21 +122,26 @@ class NewSessionViewModel(
         viewModelScope.launch(dispatchers.io) {
             _state.update { it.copy(isSavingLoading = true, error = null) }
             try {
-                val startTime = LocalDateTime(s.selectedDate!!, s.selectedTime!!)
+                val startTime = LocalDateTime(s.selectedDate, s.selectedTime)
                     .toInstant(TimeZone.currentSystemDefault())
+
+                val paidAt =
+                    if (s.paidAmount != "0.0" && (originalSession?.paid_amount != s.paidAmount.toDoubleOrNull()))
+                        Clock.System.now().toString()
+                    else null
 
                 val session = SessionRecord(
                     id = originalSession?.id ?: 0,
-                    patient_id = s.selectedPatient!!.id,
+                    patient_id = s.selectedPatient.id,
                     start_time = startTime.toString(),
-                    duration_minutes = 45, // Idéalement à mettre dans le state aussi
+                    duration_minutes = 45,
                     session_type = s.sessionType,
-                    attendance_status = originalSession?.attendance_status ?: "PENDING",
+                    attendance_status = originalSession?.attendance_status ?: AttendanceStatus.PENDING,
                     is_recurring = s.isRecurring,
-                    notes = originalSession?.notes,
+                    notes = s.notes,
                     amount = s.amount.toDoubleOrNull() ?: 30.0,
-                    paid_amount = originalSession?.paid_amount ?: 0.0,
-                    paid_at = originalSession?.paid_at
+                    paid_amount = s.paidAmount.toDoubleOrNull() ?: 0.0,
+                    paid_at = paidAt
                 )
 
                 if (selectedSessionId != null) {

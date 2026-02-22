@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,8 +36,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.cabinet.orthophonie.ui.main.patients.PatientStatus
+import org.cabinet.orthophonie.ui.main.patients.PatientStatusFilter
 
 @Composable
 fun NewPatientScreen(
@@ -123,8 +129,9 @@ fun NewPatientScreenContent(
                 PatientTextField(
                     value = uiState.contactParent,
                     onValueChange = { onEvent(NewPatientEvents.OnContactParentChanged(it)) },
-                    label = "Contact Parent*",
-                    placeholder = "Numéro de téléphone"
+                    label = "Contact*",
+                    placeholder = "Numéro de téléphone",
+                    isNumeric = true
                 )
 
                 PatientTextField(
@@ -138,7 +145,8 @@ fun NewPatientScreenContent(
                     value = uiState.schoolClass,
                     onValueChange = { onEvent(NewPatientEvents.OnClassChanged(it)) },
                     label = "Classe",
-                    placeholder = "Ex: 3ème année"
+                    placeholder = "Ex: 3ème année",
+                    imeAction = ImeAction.Done
                 )
 
                 // Status Selector
@@ -155,13 +163,13 @@ fun NewPatientScreenContent(
                     ) {
                         StatusChip(
                             text = "Actif",
-                            isSelected = uiState.status.uppercase() == "ACTIVE",
-                            onClick = { onEvent(NewPatientEvents.OnStatusChanged("Active")) }
+                            isSelected = uiState.status.name == PatientStatusFilter.ACTIVE.name,
+                            onClick = { onEvent(NewPatientEvents.OnStatusChanged(PatientStatus.ACTIVE)) }
                         )
                         StatusChip(
                             text = "Archivé",
-                            isSelected = uiState.status.uppercase() == "ARCHIVED",
-                            onClick = { onEvent(NewPatientEvents.OnStatusChanged("ARCHIVED")) }
+                            isSelected = uiState.status.name == PatientStatusFilter.ARCHIVED.name,
+                            onClick = { onEvent(NewPatientEvents.OnStatusChanged(PatientStatus.ARCHIVED)) }
                         )
                     }
                 }
@@ -213,6 +221,8 @@ fun PatientTextField(
     value: String?,
     onValueChange: (String) -> Unit,
     label: String,
+    isNumeric: Boolean = false,
+    imeAction: ImeAction = ImeAction.Next,
     placeholder: String
 ) {
     Column {
@@ -235,7 +245,12 @@ fun PatientTextField(
                 focusedBorderColor = Color(0xFF2196F3),
                 unfocusedBorderColor = Color(0xFFE0E0E0)
             ),
-            singleLine = true
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = imeAction,
+                keyboardType = if (isNumeric) KeyboardType.Phone else KeyboardType.Text
+            )
         )
     }
 }

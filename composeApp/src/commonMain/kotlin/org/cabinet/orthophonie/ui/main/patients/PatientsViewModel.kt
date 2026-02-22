@@ -19,21 +19,27 @@ class PatientsViewModel(
     private val onPatientSelected: (patientId: Long) -> Unit,
 ) : ViewModel() {
 
-    // 1. Local state for search query only
-    //Il faut séparer le state coming from bdd from le state coming from l'ui ou l'utilisateur
     private val _searchQuery = MutableStateFlow("")
+    private val _statusFilter = MutableStateFlow(PatientStatusFilter.ACTIVE)
 
     val state: StateFlow<PatientsUiState> = combine(
         repository.patients,
-        _searchQuery
-    ) { patientsList, query ->
+        _searchQuery,
+        _statusFilter
+    ) { patientsList, query, status ->
         if (patientsList == null) {
-            return@combine PatientsUiState(isLoading = true, searchQuery = query)
+            return@combine PatientsUiState(isLoading = true, searchQuery = query, selectedStatus = status)
         }
+
+        val filteredByStatus = when (status) {
+            PatientStatusFilter.ALL -> patientsList
+            else -> patientsList.filter { it.status.name == status.name }
+        }
+
         val filtered = if (query.isEmpty()) {
-            patientsList
+            filteredByStatus
         } else {
-            patientsList.filter {
+            filteredByStatus.filter {
                 "${it.first_name} ${it.last_name}".contains(query, ignoreCase = true)
             }
         }
@@ -41,7 +47,8 @@ class PatientsViewModel(
         PatientsUiState(
             isLoading = false,
             searchQuery = query,
-            filteredPatients = filtered
+            filteredPatients = filtered,
+            selectedStatus = status
         )
     }
         // Ensure filtering and mapping happen on the IO dispatcher (off the Main thread)
@@ -52,20 +59,19 @@ class PatientsViewModel(
             // Keeps the flow active for 5 seconds after the last UI subscriber disconnects
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = PatientsUiState(
-                filteredPatients = repository.patients.value?: emptyList(),
-                isLoading = repository.patients.value?.isEmpty() ?: true
+                filteredPatients = emptyList(),
+                isLoading = true,
+                selectedStatus = PatientStatusFilter.ACTIVE
             )
         )
 
-    /**
-     * Handle UI events using the MVI (Model-View-Intent) pattern
-     */
     fun onEvent(event: PatientsScreenEvents) {
         when (event) {
             is PatientsScreenEvents.OnSearchQueryChanged -> {
-                // Update the search query source.
-                // Using .update is safer than .value = ... in concurrent environments.
                 _searchQuery.update { event.searchQuery }
+            }
+            is PatientsScreenEvents.OnStatusFilterChanged -> {
+                _statusFilter.update { event.status }
             }
             is PatientsScreenEvents.OnPatientSelected -> {
                 onPatientSelected(event.patientId)

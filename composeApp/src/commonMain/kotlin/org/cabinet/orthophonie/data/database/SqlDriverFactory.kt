@@ -5,6 +5,7 @@ import app.cash.sqldelight.ColumnAdapter
 import app.cash.sqldelight.EnumColumnAdapter
 import app.cash.sqldelight.db.SqlDriver
 import org.cabinet.orthophonie.database.AppDatabase
+import org.cabinet.orthophonie.database.PatientRecord
 import org.cabinet.orthophonie.database.SessionRecord
 
 @NoLiveLiterals
@@ -23,6 +24,11 @@ fun createDatabase(driverFactory: SqlDriverFactory): AppDatabase {
         driver,
         sessionRecordAdapter = SessionRecord.Adapter(
             duration_minutesAdapter = intAdapter,
+            session_typeAdapter = EnumColumnAdapter(),
+            attendance_statusAdapter = EnumColumnAdapter(),
+        ),
+        patientRecordAdapter = PatientRecord.Adapter(
+            statusAdapter = EnumColumnAdapter()
         )
     )
 }
