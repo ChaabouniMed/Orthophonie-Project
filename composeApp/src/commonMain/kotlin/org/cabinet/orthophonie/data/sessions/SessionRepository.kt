@@ -13,14 +13,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import org.cabinet.orthophonie.database.GetSessions
 import org.cabinet.orthophonie.database.SessionRecord
 import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
 import org.cabinet.orthophonie.utils.AppDispatchers
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 class SessionRepository(
     private val dao: SessionDao,
@@ -32,7 +30,8 @@ class SessionRepository(
         .asFlow()
         .mapToList(dispatchers.io)
         .map { list ->
-            list.sortedBy { it.start_time }
+            list.map { it.adjustForRecurrence() }
+                .sortedBy { it.start_time }
         }
         .distinctUntilChanged()
 
@@ -53,22 +52,14 @@ class SessionRepository(
      */
     val todaySessions: StateFlow<List<GetSessions>?> = sessions
     .map { list ->
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        list?.filter { session ->
-            try {
-                Instant.parse(session.start_time)
-                    .toLocalDateTime(TimeZone.currentSystemDefault())
-                    .date == today
-            } catch (e: Exception) {
-                false
-            }
-        }
+        val todayDate = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        list?.mapNotNull { it.matchAndAdjustDate(todayDate) }
     }
-    .flowOn(dispatchers.io) // Le filtrage se fait sur le thread IO
+    .flowOn(dispatchers.io)
     .stateIn(
-    scope = applicationScope,
-    started = SharingStarted.WhileSubscribed(5000),
-    initialValue = null
+        scope = applicationScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
     )
 
     /**
