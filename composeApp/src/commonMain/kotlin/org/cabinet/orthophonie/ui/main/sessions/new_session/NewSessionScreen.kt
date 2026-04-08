@@ -227,24 +227,6 @@ fun NewSessionScreenContent(
                     )
                 }
 
-                // Recurring
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Séance récurrente", fontWeight = FontWeight.Bold)
-                        Text("Répéter chaque semaine", fontSize = 12.sp, color = Color.Gray)
-                    }
-                    Switch(
-                        checked = uiState.isRecurring,
-                        onCheckedChange = { onEvent(NewSessionEvents.OnRecurringChanged(it)) }
-                    )
-                }
-
                 if (uiState.error != null) {
                     Text(uiState.error, color = Color.Red, fontSize = 14.sp)
                 }

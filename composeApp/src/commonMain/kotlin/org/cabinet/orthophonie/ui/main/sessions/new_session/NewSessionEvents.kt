@@ -13,7 +13,6 @@ sealed interface NewSessionEvents {
     data class OnAmountChanged(val amount: String) : NewSessionEvents
     data class OnPaidAmountChanged(val paidAmount: String) : NewSessionEvents
     data class OnNotesChanged(val notes: String) : NewSessionEvents
-    data class OnRecurringChanged(val isRecurring: Boolean) : NewSessionEvents
     data object OnSaveSession : NewSessionEvents
     data object OnBackClicked : NewSessionEvents
 }

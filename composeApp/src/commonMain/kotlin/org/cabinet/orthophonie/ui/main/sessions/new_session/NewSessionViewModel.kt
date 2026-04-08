@@ -80,7 +80,6 @@ class NewSessionViewModel(
                             amount = session.amount.toString(),
                             paidAmount = session.paid_amount.toString(),
                             notes = session.notes ?: "",
-                            isRecurring = session.is_recurring == true,
                             isLoading = false
                         ) }
                     } else {
@@ -105,7 +104,6 @@ class NewSessionViewModel(
             is NewSessionEvents.OnAmountChanged -> _state.update { it.copy(amount = event.amount) }
             is NewSessionEvents.OnPaidAmountChanged -> _state.update { it.copy(paidAmount = event.paidAmount) }
             is NewSessionEvents.OnNotesChanged -> _state.update { it.copy(notes = event.notes) }
-            is NewSessionEvents.OnRecurringChanged -> _state.update { it.copy(isRecurring = event.isRecurring) }
             NewSessionEvents.OnBackClicked -> onBack()
             NewSessionEvents.OnSaveSession -> saveSession()
         }
@@ -137,7 +135,6 @@ class NewSessionViewModel(
                     duration_minutes = 45,
                     session_type = s.sessionType,
                     attendance_status = originalSession?.attendance_status ?: AttendanceStatus.PENDING,
-                    is_recurring = s.isRecurring,
                     notes = s.notes,
                     amount = s.amount.toDoubleOrNull() ?: 30.0,
                     paid_amount = s.paidAmount.toDoubleOrNull() ?: 0.0,

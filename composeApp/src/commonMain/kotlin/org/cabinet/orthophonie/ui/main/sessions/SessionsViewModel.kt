@@ -9,10 +9,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.cabinet.orthophonie.data.patients.PatientRepository
 import org.cabinet.orthophonie.data.sessions.SessionRepository
-import org.cabinet.orthophonie.data.sessions.matchAndAdjustDate
 import org.cabinet.orthophonie.utils.AppDispatchers
+import kotlin.time.Instant
 
 class SessionsViewModel(
     private val sessionRepository: SessionRepository,
@@ -31,24 +33,16 @@ class SessionsViewModel(
         _sessionUserUiState
     ) { sessions, todaySessions, patients, sessionUserUiState ->
 
-        val filteredSessions = sessions?.mapNotNull { session ->
+        val filteredSessions = sessions?.filter { session ->
             val matchPatient = sessionUserUiState.selectedPatientId == null || session.patient_id == sessionUserUiState.selectedPatientId
             val matchType = sessionUserUiState.selectedSessionType == null || session.session_type == sessionUserUiState.selectedSessionType
             val matchAttendance = sessionUserUiState.selectedAttendanceStatus == null || session.attendance_status == sessionUserUiState.selectedAttendanceStatus
             val matchPending = !sessionUserUiState.onlyPendingPayment || (session.attendance_status == AttendanceStatus.PRESENT && (session.paid_amount ?: 0.0) < (session.amount ?: 30.0))
-            
-            val userSelectedDate = sessionUserUiState.selectedDate
-            val sessionAfterDateFilter = if (userSelectedDate != null) {
-                session.matchAndAdjustDate(userSelectedDate)
-            } else {
-                session
-            }
 
-            if (matchPatient && matchType && matchAttendance && matchPending && sessionAfterDateFilter != null) {
-                sessionAfterDateFilter
-            } else {
-                null
-            }
+            val matchDate = sessionUserUiState.selectedDate == null || Instant.parse(session.start_time)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date == sessionUserUiState.selectedDate
+
+            matchPatient && matchType && matchAttendance && matchPending && matchDate
         }
 
         SessionsUiState(

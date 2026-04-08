@@ -21,8 +21,7 @@ class SessionDao(
                 patient_id = session.patient_id,
                 start_time = session.start_time,
                 session_type = session.session_type,
-                amount = session.amount,
-                is_recurring = session.is_recurring
+                amount = session.amount
             )
         }
 
@@ -38,7 +37,6 @@ class SessionDao(
                 start_time = session.start_time,
                 session_type = session.session_type,
                 amount = session.amount,
-                is_recurring = session.is_recurring,
                 attendance_status = session.attendance_status,
                 notes = session.notes,
                 paid_amount = session.paid_amount,

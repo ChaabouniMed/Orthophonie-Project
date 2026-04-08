@@ -82,6 +82,10 @@ class NewPatientViewModel(
             _state.update { it.copy(error = "Required fields * are missing") }
             return
         }
+        if (s.contactParent.length != 8) {
+            _state.update { it.copy(error = "Contact must be 8 digits") }
+            return
+        }
 
         viewModelScope.launch(dispatchers.io) {
             _state.update { it.copy(isSavingLoading = true, error = null) }

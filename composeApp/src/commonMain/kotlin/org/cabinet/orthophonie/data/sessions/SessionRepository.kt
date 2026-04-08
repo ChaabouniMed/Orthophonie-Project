@@ -13,12 +13,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import org.cabinet.orthophonie.database.GetSessions
 import org.cabinet.orthophonie.database.SessionRecord
 import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
 import org.cabinet.orthophonie.utils.AppDispatchers
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 class SessionRepository(
     private val dao: SessionDao,
@@ -29,10 +31,6 @@ class SessionRepository(
     private val allSessionsFlow: Flow<List<GetSessions>> = dao.getSessions()
         .asFlow()
         .mapToList(dispatchers.io)
-        .map { list ->
-            list.map { it.adjustForRecurrence() }
-                .sortedBy { it.start_time }
-        }
         .distinctUntilChanged()
 
     /* ---------- GET (Reactive Flows) ---------- */
@@ -53,7 +51,15 @@ class SessionRepository(
     val todaySessions: StateFlow<List<GetSessions>?> = sessions
     .map { list ->
         val todayDate = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        list?.mapNotNull { it.matchAndAdjustDate(todayDate) }
+        list?.filter { session ->
+            try {
+                Instant.parse(session.start_time)
+                    .toLocalDateTime(TimeZone.currentSystemDefault())
+                    .date == todayDate
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
     .flowOn(dispatchers.io)
     .stateIn(

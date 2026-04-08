@@ -16,7 +16,6 @@ data class NewSessionState(
     val amount: String = "30.0",
     val paidAmount: String = "0.0",
     val notes: String = "",
-    val isRecurring: Boolean = false,
     val isLoading: Boolean = false,
     val isSavingLoading: Boolean = false,
     val error: String? = null,
