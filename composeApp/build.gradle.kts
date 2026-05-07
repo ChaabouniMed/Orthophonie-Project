@@ -1,5 +1,7 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import kotlin.apply
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -55,6 +57,7 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.aay.chart)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -95,6 +98,17 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    applicationVariants.all {
+        outputs.forEach { output ->
+            (output as? BaseVariantOutputImpl)?.apply {
+                outputFileName = if (buildType.name == "debug")
+                    "${rootProject.name}-${buildType.name}.apk"
+                else
+                    "${rootProject.name}.apk"
+            }
+        }
     }
 }
 

@@ -27,11 +27,11 @@ import com.arkivanov.decompose.extensions.compose.stack.Children
 import org.cabinet.orthophonie.ui.main.home.HomeScreen
 import org.cabinet.orthophonie.ui.main.patients.PatientsScreen
 import org.cabinet.orthophonie.ui.main.patients.new_patient.NewPatientScreen
+import org.cabinet.orthophonie.ui.main.report.ReportScreen
 import org.cabinet.orthophonie.ui.main.sessions.SessionsScreen
 import org.cabinet.orthophonie.ui.main.sessions.new_session.NewSessionScreen
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
-import kotlin.time.Clock
 
 @Composable
 fun MainScreens(
@@ -115,7 +115,7 @@ fun MainScreensContent(
                     }
                 )
 
-                is MainComponent.Child.ReportChild -> ReportScreenContent()
+                is MainComponent.Child.ReportChild -> ReportScreen()
                 is MainComponent.Child.PatientsChild -> PatientsScreen(
                     viewModel = koinInject {
                         parametersOf(
@@ -145,11 +145,6 @@ fun MainScreensContent(
             }
         }
     }
-}
-
-@Composable
-fun ReportScreenContent() {
-
 }
 
 @Composable

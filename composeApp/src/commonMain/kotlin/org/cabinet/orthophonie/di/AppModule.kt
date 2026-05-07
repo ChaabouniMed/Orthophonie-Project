@@ -11,6 +11,7 @@ import org.cabinet.orthophonie.database.AppDatabase
 import org.cabinet.orthophonie.ui.main.home.HomeViewModel
 import org.cabinet.orthophonie.ui.main.patients.PatientsViewModel
 import org.cabinet.orthophonie.ui.main.patients.new_patient.NewPatientViewModel
+import org.cabinet.orthophonie.ui.main.report.ReportViewModel
 import org.cabinet.orthophonie.ui.main.sessions.SessionsViewModel
 import org.cabinet.orthophonie.ui.main.sessions.new_session.NewSessionViewModel
 import org.cabinet.orthophonie.utils.AppDispatchers
@@ -71,6 +72,7 @@ private val viewModelModule = module {
         )
     }
     viewModel { HomeViewModel() }
+    viewModel { ReportViewModel(get(), get(), get()) }
 }
 
 expect val dbModule: Module
