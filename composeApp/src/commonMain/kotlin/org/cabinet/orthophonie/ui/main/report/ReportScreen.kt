@@ -1,6 +1,7 @@
 package org.cabinet.orthophonie.ui.main.report
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +28,9 @@ import com.aay.compose.lineChart.model.LineType
 import org.cabinet.orthophonie.ui.main.sessions.AttendanceStatus
 import org.cabinet.orthophonie.ui.main.sessions.SessionType
 import org.koin.compose.koinInject
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @Composable
 fun ReportScreen(
@@ -53,6 +57,9 @@ fun ReportScreenContent(
         return
     }
 
+    val months = listOf("Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre")
+    val currentPeriodLabel = if (state.selectedPeriod == ReportPeriod.MONTHLY) "${months[state.selectedMonth - 1]} ${state.selectedYear}" else "l'année ${state.selectedYear}"
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -68,7 +75,7 @@ fun ReportScreenContent(
             color = Color(0xFF1A1C1E)
         )
 
-        // 1. Filtres Card
+        // 1. Filter Section (Patient + Period Selection)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -77,36 +84,41 @@ fun ReportScreenContent(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 PatientSelector(state, onEvent)
+                HorizontalDivider(color = Color(0xFFF0F2F5))
                 PeriodToggle(state, onEvent)
+                MonthYearPickers(state, onEvent)
             }
         }
 
         // 2. Dashbord KPIs
         KPIGrid(state)
 
-        // 3. Summary Section
+        // 3. COLOR LEGEND GUIDE
+        ColorSemanticGuide()
+
+        // 4. Bilan Summary
         if (state.selectedPatientId != null && state.patientStats != null) {
-            PatientStatsSection(state.patientStats, state.selectedPeriod)
+            PatientStatsSection(state.patientStats, currentPeriodLabel)
         } else {
-            GlobalStatsSection(state)
+            GlobalStatsSection(state, currentPeriodLabel)
         }
 
-        // 4. Daily Revenue Line Chart (Monthly Mode)
-        if (state.selectedPeriod == ReportPeriod.MONTHLY && state.dailyRevenueCurrentMonth.isNotEmpty()) {
+        // 5. Daily Revenue (Monthly Mode)
+        if (state.selectedPeriod == ReportPeriod.MONTHLY && state.dailyRevenue.isNotEmpty()) {
             ChartCard(
-                title = "Flux des Recettes du Mois", 
-                subtitle = "Tendance journalière des encaissements (DZD)"
+                title = "Recettes Quotidiennes", 
+                subtitle = "Tendance des encaissements de $currentPeriodLabel (DZD)"
             ) {
                 Column {
                     Box(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                         LineChart(
-                            modifier = Modifier.width(1200.dp).height(280.dp),
+                            modifier = Modifier.width(1000.dp).height(250.dp),
                             linesParameters = listOf(
                                 LineParameters(
-                                    label = "Recette",
-                                    data = state.dailyRevenueCurrentMonth,
+                                    label = "Ventes",
+                                    data = state.dailyRevenue,
                                     lineColor = Color(0xFF4CAF50),
-                                    lineType = LineType.DEFAULT_LINE, // Aligné strictement avec l'axe X
+                                    lineType = LineType.DEFAULT_LINE,
                                     lineShadow = true
                                 )
                             ),
@@ -117,18 +129,18 @@ fun ReportScreenContent(
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    LegendMarker("Montant quotidien encaissé (DZD)", Color(0xFF4CAF50))
+                    LegendMarker("Encaissement par jour", Color(0xFF4CAF50))
                 }
             }
         }
 
-        // 5. Financial Distribution (Pie Chart)
+        // 6. Financial Distribution (Pie Chart)
         val paid = if (state.selectedPatientId != null) state.patientStats?.totalPaid ?: 0.0 else state.totalPaidAmount
         val debt = if (state.selectedPatientId != null) state.patientStats?.totalRemaining ?: 0.0 else state.totalRemainingAmount
         val totalMoney = paid + debt
 
         if (totalMoney > 0) {
-            ChartCard(title = "Situation Financière", subtitle = "Répartition payé vs dû sur la période") {
+            ChartCard(title = "Situation Financière", subtitle = "Répartition pour $currentPeriodLabel") {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     PieChart(
                         modifier = Modifier.fillMaxWidth().height(180.dp),
@@ -146,8 +158,9 @@ fun ReportScreenContent(
             }
         }
 
-        // 6. Attendance & Types
+        // 7. Présences et Types
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Attendance
             val totalSess = state.attendanceCounts.values.sum().toDouble()
             val attItems = state.attendanceCounts.map { (status, count) ->
                 val label = when(status) {
@@ -162,7 +175,7 @@ fun ReportScreenContent(
                     else -> Color(0xFF2196F3)
                 }
                 LegendItemData(label, "$count", if(totalSess>0) (count/totalSess*100).toInt() else 0, color)
-            }.filter { it.percentage >= 0 }
+            }.filter { it.value.toInt() > 0 }
 
             if (attItems.isNotEmpty()) {
                 ChartCard(title = "Présences", modifier = Modifier.weight(1f)) {
@@ -177,12 +190,13 @@ fun ReportScreenContent(
                 }
             }
 
+            // Session Types
             val totalTypes = state.sessionTypeCounts.values.sum().toDouble()
             val typeItems = state.sessionTypeCounts.map { (type, count) ->
                 val label = if (type == SessionType.BILAN) "Bilan" else "Normal"
                 val color = if (type == SessionType.BILAN) Color(0xFFFF9800) else Color(0xFF9C27B0)
                 LegendItemData(label, "$count", if(totalTypes>0) (count/totalTypes*100).toInt() else 0, color)
-            }.filter { it.percentage >= 0 }
+            }.filter { it.value.toInt() > 0 }
 
             if (typeItems.isNotEmpty()) {
                 ChartCard(title = "Types", modifier = Modifier.weight(1f)) {
@@ -198,9 +212,9 @@ fun ReportScreenContent(
             }
         }
 
-        // 7. Yearly Evolution (LineChart)
+        // 8. Yearly Evolution (LineChart for the selected year)
         if (state.selectedPeriod == ReportPeriod.YEARLY && state.monthlyRevenue.isNotEmpty() && state.monthlyRevenue.any { it > 0.0 }) {
-            ChartCard(title = "Évolution Annuelle", subtitle = "Revenus encaissés par mois (DZD)") {
+            ChartCard(title = "Évolution Annuelle", subtitle = "Recettes par mois pour ${state.selectedYear}") {
                 Column {
                     Box(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                         LineChart(
@@ -221,7 +235,35 @@ fun ReportScreenContent(
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    LegendMarker("Montant mensuel (DZD)", Color(0xFF2196F3))
+                    LegendMarker("Montant cumulé mensuel", Color(0xFF2196F3))
+                }
+            }
+        }
+
+        // 9. Cabinet Growth Chart (Only in Global view)
+        if (state.selectedPatientId == null && state.patientAcquisition.isNotEmpty() && state.patientAcquisition.any { it > 0.0 }) {
+            ChartCard(title = "Croissance du Cabinet", subtitle = "Nouveaux patients inscrits en ${state.selectedYear}") {
+                Column {
+                    Box(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                        LineChart(
+                            modifier = Modifier.width(800.dp).height(240.dp),
+                            linesParameters = listOf(
+                                LineParameters(
+                                    label = "Inscriptions",
+                                    data = state.patientAcquisition,
+                                    lineColor = Color(0xFF9C27B0),
+                                    lineType = LineType.DEFAULT_LINE,
+                                    lineShadow = true
+                                )
+                            ),
+                            isGrid = true,
+                            gridColor = Color.LightGray.copy(alpha = 0.5f),
+                            xAxisData = state.acquisitionLabels,
+                            animateChart = true,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LegendMarker("Nombre d'inscriptions par mois", Color(0xFF9C27B0))
                 }
             }
         }
@@ -230,7 +272,58 @@ fun ReportScreenContent(
     }
 }
 
-// --- COMPONENTS ---
+// --- UI COMPONENTS ---
+
+@Composable
+fun MonthYearPickers(state: ReportUiState, onEvent: (ReportEvents) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.selectedPeriod == ReportPeriod.MONTHLY) {
+            MonthSelector(state, onEvent, Modifier.weight(1f))
+        }
+        YearSelector(state, onEvent, Modifier.weight(1f))
+    }
+}
+
+@Composable
+fun MonthSelector(state: ReportUiState, onEvent: (ReportEvents) -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val months = listOf("Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre")
+    
+    Box(modifier = modifier) {
+        OutlinedCard(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = months[state.selectedMonth - 1], fontSize = 13.sp)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            months.forEachIndexed { index, name ->
+                DropdownMenuItem(text = { Text(name) }, onClick = { onEvent(ReportEvents.OnMonthChanged(index + 1)); expanded = false })
+            }
+        }
+    }
+}
+
+@Composable
+fun YearSelector(state: ReportUiState, onEvent: (ReportEvents) -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentYear = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
+    val years = (currentYear - 5..currentYear + 2).toList()
+    
+    Box(modifier = modifier) {
+        OutlinedCard(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = state.selectedYear.toString(), fontSize = 13.sp)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            years.forEach { year ->
+                DropdownMenuItem(text = { Text(year.toString()) }, onClick = { onEvent(ReportEvents.OnYearChanged(year)); expanded = false })
+            }
+        }
+    }
+}
 
 @Composable
 fun PatientSelector(state: ReportUiState, onEvent: (ReportEvents) -> Unit) {
@@ -244,7 +337,7 @@ fun PatientSelector(state: ReportUiState, onEvent: (ReportEvents) -> Unit) {
             Text("Filtrer par Patient", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedCard(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), border = CardDefaults.outlinedCardBorder().copy(width = 1.dp)) {
+        OutlinedCard(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
             Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(text = selectedPatient?.let { "${it.first_name} ${it.last_name}" } ?: "Tous les patients (Vue globale)", color = if (selectedPatient != null) Color.Black else Color.Gray, fontSize = 14.sp)
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null)
@@ -263,7 +356,7 @@ fun PatientSelector(state: ReportUiState, onEvent: (ReportEvents) -> Unit) {
 fun PeriodToggle(state: ReportUiState, onEvent: (ReportEvents) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PeriodButton("Année", state.selectedPeriod == ReportPeriod.YEARLY, { onEvent(ReportEvents.OnPeriodChanged(ReportPeriod.YEARLY)) }, Modifier.weight(1f))
-        PeriodButton("Mois Actuel", state.selectedPeriod == ReportPeriod.MONTHLY, { onEvent(ReportEvents.OnPeriodChanged(ReportPeriod.MONTHLY)) }, Modifier.weight(1f))
+        PeriodButton("Mois", state.selectedPeriod == ReportPeriod.MONTHLY, { onEvent(ReportEvents.OnPeriodChanged(ReportPeriod.MONTHLY)) }, Modifier.weight(1f))
     }
 }
 
@@ -351,11 +444,15 @@ fun KPICard(title: String, value: String, icon: ImageVector, color: Color, modif
 }
 
 @Composable
-fun GlobalStatsSection(state: ReportUiState) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+fun GlobalStatsSection(state: ReportUiState, periodLabel: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            val label = if(state.selectedPeriod == ReportPeriod.MONTHLY) "du Mois Actuel" else "Analyse Globale"
-            Text("Bilan Financier $label", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+            Text("Bilan Financier de $periodLabel", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 StatItem("Total Encaissé", "${state.totalPaidAmount.toInt()} DZD", Color(0xFF2E7D32))
@@ -366,11 +463,15 @@ fun GlobalStatsSection(state: ReportUiState) {
 }
 
 @Composable
-fun PatientStatsSection(stats: PatientStats, period: ReportPeriod) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+fun PatientStatsSection(stats: PatientStats, periodLabel: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            val label = if(period == ReportPeriod.MONTHLY) "du Mois" else "Analyse Annuelle"
-            Text("Résumé Individuel $label", fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+            Text("Résumé Individuel de $periodLabel", fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 StatItem("Séances", stats.totalSessions.toString())
@@ -391,10 +492,17 @@ fun StatItem(label: String, value: String, color: Color = Color.Black) {
 
 @Composable
 fun ChartCard(title: String, subtitle: String? = null, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Card(modifier = modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            if (subtitle != null) Text(text = subtitle, fontSize = 10.sp, color = Color.Gray, lineHeight = 12.sp)
+            if (subtitle != null) {
+                Text(text = subtitle, fontSize = 10.sp, color = Color.Gray, lineHeight = 12.sp)
+            }
             Spacer(modifier = Modifier.height(16.dp))
             content()
         }

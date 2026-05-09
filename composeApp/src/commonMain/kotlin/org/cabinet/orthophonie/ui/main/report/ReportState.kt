@@ -9,6 +9,8 @@ data class ReportUiState(
     val patients: List<PatientRecord> = emptyList(),
     val selectedPatientId: Long? = null,
     val selectedPeriod: ReportPeriod = ReportPeriod.YEARLY,
+    val selectedMonth: Int = 1, // 1-12
+    val selectedYear: Int = 2024,
     
     // Global/Yearly Stats
     val monthlyRevenue: List<Double> = emptyList(),
@@ -27,12 +29,9 @@ data class ReportUiState(
     val patientAcquisition: List<Double> = emptyList(),
     val acquisitionLabels: List<String> = emptyList(),
     
-    // Current Month Stats
-    val dailyRevenueCurrentMonth: List<Double> = emptyList(),
+    // Current Period Stats (Month specific)
+    val dailyRevenue: List<Double> = emptyList(),
     val dailyRevenueLabels: List<String> = emptyList(),
-    val currentMonthPaidAmount: Double = 0.0,
-    val currentMonthRemainingAmount: Double = 0.0,
-    val currentMonthSessionsCount: Int = 0,
     
     // KPIs
     val attendanceRate: Int = 0, // Percentage
@@ -40,7 +39,7 @@ data class ReportUiState(
     val averageSessionAmount: Double = 0.0,
     val totalSessionsCount: Int = 0,
 
-    // Patient specific stats (shown when selectedPatientId is not null)
+    // Patient specific stats
     val patientStats: PatientStats? = null,
 
     val error: String? = null

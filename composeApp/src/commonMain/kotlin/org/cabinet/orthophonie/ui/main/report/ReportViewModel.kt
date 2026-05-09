@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.number
@@ -27,11 +26,18 @@ class ReportViewModel(
     private val dispatchers: AppDispatchers
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ReportUiState())
+    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    
+    private val _state = MutableStateFlow(ReportUiState(
+        selectedMonth = now.month.number,
+        selectedYear = now.year
+    ))
     val state = _state.asStateFlow()
 
     private val _selectedPatientId = MutableStateFlow<Long?>(null)
     private val _selectedPeriod = MutableStateFlow(ReportPeriod.YEARLY)
+    private val _selectedMonth = MutableStateFlow(now.monthNumber)
+    private val _selectedYear = MutableStateFlow(now.year)
 
     init {
         loadData()
@@ -43,9 +49,17 @@ class ReportViewModel(
                 patientRepository.patients,
                 sessionRepository.sessions,
                 _selectedPatientId,
-                _selectedPeriod
-            ) { patients, sessions, selectedId, period ->
-                calculateStats(patients, sessions, selectedId, period)
+                _selectedPeriod,
+                _selectedMonth,
+                _selectedYear
+            ) { array ->
+                val patients = array[0] as List<PatientRecord>?
+                val sessions = array[1] as List<GetSessions>?
+                val selectedId = array[2] as Long?
+                val period = array[3] as ReportPeriod
+                val month = array[4] as Int
+                val year = array[5] as Int
+                calculateStats(patients, sessions, selectedId, period, month, year)
             }.collect { newState ->
                 _state.update { newState }
             }
@@ -56,14 +70,12 @@ class ReportViewModel(
         patients: List<PatientRecord>?,
         sessions: List<GetSessions>?,
         selectedId: Long?,
-        period: ReportPeriod
+        period: ReportPeriod,
+        month: Int,
+        year: Int
     ): ReportUiState {
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        val currentYear = now.year
-        val currentMonth = now.monthNumber
-
         // 1. Filtrage initial par patient
-        var filteredSessions = if (selectedId != null) {
+        val filteredSessions = if (selectedId != null) {
             sessions?.filter { it.patient_id == selectedId }
         } else {
             sessions
@@ -74,13 +86,13 @@ class ReportViewModel(
             ReportPeriod.YEARLY -> filteredSessions?.filter {
                 try {
                     val dt = Instant.parse(it.start_time).toLocalDateTime(TimeZone.currentSystemDefault())
-                    dt.year == currentYear
+                    dt.year == year
                 } catch (e: Exception) { false }
             }
             ReportPeriod.MONTHLY -> filteredSessions?.filter {
                 try {
                     val dt = Instant.parse(it.start_time).toLocalDateTime(TimeZone.currentSystemDefault())
-                    dt.year == currentYear && dt.monthNumber == currentMonth
+                    dt.year == year && dt.monthNumber == month
                 } catch (e: Exception) { false }
             }
         }
@@ -121,12 +133,12 @@ class ReportViewModel(
 
         // --- CALCULS DES GRAPHIQUES ---
 
-        // 1. Monthly Revenue (Yearly Graph)
+        // 1. Monthly Revenue (Yearly Graph - Toujours pour l'année sélectionnée)
         val monthlyRevenueMap = mutableMapOf<Int, Double>()
         filteredSessions?.filter { 
             try {
                 val dt = Instant.parse(it.start_time).toLocalDateTime(TimeZone.currentSystemDefault())
-                dt.year == currentYear
+                dt.year == year
             } catch (e: Exception) { false }
         }?.forEach {
             try {
@@ -137,12 +149,12 @@ class ReportViewModel(
         val revenueData = (1..12).map { monthlyRevenueMap[it] ?: 0.0 }
         val revenueLabels = listOf("Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc")
 
-        // 2. Daily Revenue (Monthly Graph)
+        // 2. Daily Revenue (Monthly Graph - Toujours pour le mois et l'année sélectionnés)
         val dailyRevenueMap = mutableMapOf<Int, Double>()
         filteredSessions?.filter {
             try {
                 val dt = Instant.parse(it.start_time).toLocalDateTime(TimeZone.currentSystemDefault())
-                dt.year == currentYear && dt.monthNumber == currentMonth
+                dt.year == year && dt.monthNumber == month
             } catch (e: Exception) { false }
         }?.forEach {
             try {
@@ -150,15 +162,16 @@ class ReportViewModel(
                 dailyRevenueMap[dt.dayOfMonth] = (dailyRevenueMap[dt.dayOfMonth] ?: 0.0) + (it.paid_amount ?: 0.0)
             } catch (e: Exception) {}
         }
-        val daysInMonth = when (currentMonth) {
-            2 -> if (currentYear % 4 == 0) 29 else 28
+        
+        val daysInMonth = when (month) {
+            2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
             4, 6, 9, 11 -> 30
             else -> 31
         }
         val dailyRevenueData = (1..daysInMonth).map { dailyRevenueMap[it] ?: 0.0 }
         val dailyLabels = (1..daysInMonth).map { it.toString() }
 
-        // 3. Weekly Activity (Current Week View)
+        // 3. Weekly Activity (Current period view)
         val weeklyActivity = DoubleArray(7)
         periodSessions?.forEach {
             try {
@@ -185,9 +198,11 @@ class ReportViewModel(
             patients = patients ?: listOf(),
             selectedPatientId = selectedId,
             selectedPeriod = period,
+            selectedMonth = month,
+            selectedYear = year,
             monthlyRevenue = revenueData,
             revenueLabels = revenueLabels,
-            dailyRevenueCurrentMonth = dailyRevenueData,
+            dailyRevenue = dailyRevenueData,
             dailyRevenueLabels = dailyLabels,
             totalPaidAmount = periodPaid,
             totalRemainingAmount = periodRemaining,
@@ -207,6 +222,8 @@ class ReportViewModel(
         when (event) {
             is ReportEvents.OnPatientSelected -> _selectedPatientId.value = event.patientId
             is ReportEvents.OnPeriodChanged -> _selectedPeriod.value = event.period
+            is ReportEvents.OnMonthChanged -> _selectedMonth.value = event.month
+            is ReportEvents.OnYearChanged -> _selectedYear.value = event.year
             ReportEvents.RefreshStats -> loadData()
         }
     }
